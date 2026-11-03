@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="Edible.Domain"
+                   namespace="Edible.Domain.Entities">
+  <joined-subclass name="Chef" table="Chef" extends="Usuario">
+    <key column="id"/>
+    <bag name="Receta" inverse="true">
+      <key>
+        <column name="FK_Chef_chef"/>
+      </key>
+      <one-to-many class="Receta"/>
+    </bag>
+  </joined-subclass>
+  <query name="ChefReadAllHQL">from Chef</query>
+</hibernate-mapping>

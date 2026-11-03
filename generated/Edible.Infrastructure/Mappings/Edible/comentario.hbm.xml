@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="Edible.Domain"
+                   namespace="Edible.Domain.Entities">
+  <class name="Comentario" table="Comentario">
+    <id name="Id" column="id" type="Int32">
+      <generator class="hilo"/>
+    </id>
+    <property name="User_id" type="Int32">
+      <column name="user_id" not-null="true"/>
+    </property>
+    <property name="Imagen" type="String">
+      <column name="imagen"/>
+    </property>
+    <property name="Titulo" type="String">
+      <column name="titulo" not-null="true"/>
+    </property>
+    <property name="Contenido" type="String">
+      <column name="contenido"/>
+    </property>
+    <property name="Valoracion" type="Int32">
+      <column name="valoracion" not-null="true"/>
+    </property>
+    <many-to-one name="Comentador" class="Usuario">
+      <column name="FK_Usuario_comentador" not-null="true"/>
+    </many-to-one>
+    <many-to-one name="Receta" class="Receta">
+      <column name="FK_Receta_receta" not-null="true"/>
+    </many-to-one>
+  </class>
+  <query name="ComentarioReadAllHQL">from Comentario</query>
+</hibernate-mapping>

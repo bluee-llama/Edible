@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="Edible.Domain"
+                   namespace="Edible.Domain.Entities">
+  <class name="Paso" table="Paso">
+    <id name="Id" column="id" type="Int32">
+      <generator class="hilo"/>
+    </id>
+    <property name="Nombre" type="String">
+      <column name="nombre" not-null="true"/>
+    </property>
+    <property name="Descripcion" type="String">
+      <column name="descripcion" not-null="true"/>
+    </property>
+    <many-to-one name="Receta" class="Receta">
+      <column name="FK_Receta_receta" not-null="true"/>
+    </many-to-one>
+  </class>
+  <query name="PasoReadAllHQL">from Paso</query>
+</hibernate-mapping>

@@ -1,0 +1,14 @@
+{
+  "generation": {
+    "orm": "nhibernate",
+    "outputDirectory": "generated",
+    "projectName": "Edible",
+    "targetFramework": "net9.0",
+    "database": "sqlite"
+  },
+  "database": {
+    "provider": "sqlite",
+    "name": "Edible",
+    "file": "Edible.db"
+  }
+}

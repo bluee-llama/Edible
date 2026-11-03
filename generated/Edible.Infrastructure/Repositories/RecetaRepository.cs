@@ -1,0 +1,120 @@
+﻿using Microsoft.Extensions.Logging;
+using NHibernate;
+using NHibernate.Linq;
+using Edible.Application.Abstractions;
+using Edible.Domain.Entities;
+using Edible.Domain.Enums;
+using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Exceptions;
+
+namespace Edible.Infrastructure.Repositories;
+
+public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
+{
+    public RecetaRepository(ILogger<RecetaRepository>? logger = null)
+        : base(logger)
+    {
+    }
+
+    public RecetaRepository(ISession session, ILogger<RecetaRepository>? logger = null)
+        : base(session, logger)
+    {
+    }
+
+    public RecetaRepository(ISessionFactory sessionFactory, ILogger<RecetaRepository>? logger = null)
+        : base(sessionFactory, logger)
+    {
+    }
+
+    public async Task<IReadOnlyList<Receta>> ReadAllAsync()
+    {
+        try
+        {
+            using var context = OpenSession();
+            return await context.Session.Query<Receta>().ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error reading all {Entity} entities.", EntityName);
+            throw new DataException($"Error reading all {EntityName} entities.", ex);
+        }
+    }
+
+    public async Task<Receta?> ReadAsync(object id)
+    {
+        try
+        {
+            using var context = OpenSession();
+            return await context.Session.GetAsync<Receta>(id);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error reading {Entity} entity with id {EntityId}.", EntityName, id);
+            throw new DataException($"Error reading {EntityName} entity.", ex);
+        }
+    }
+
+    public async Task SaveAsync(Receta entity)
+    {
+        await ExecuteRepositoryOperationInTransactionAsync(
+            "Save",
+            session => session.SaveOrUpdateAsync(entity),
+            $"Error saving {EntityName} entity.");
+    }
+
+    public async Task DeleteAsync(Receta entity)
+    {
+        await ExecuteRepositoryOperationInTransactionAsync(
+            "Delete",
+            session => session.DeleteAsync(entity),
+            $"Error deleting {EntityName} entity.");
+    }
+
+    public async Task<IReadOnlyList<Receta>> BusquedaAvanzadaAsync(DietaEspecial p_dieta, float p_notaMinima, int p_tiempoMin, int p_tiempoMax, int p_dificultad, Alergenos p_alergenoExcluido, int p_ingrediente_oid)
+    {
+        try
+        {
+            using var context = OpenSession();
+            return await context.Session.Query<Receta>()
+                .Where(entity => entity.DietaEspecial == p_dieta && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && entity.TiempoRealizacion <= p_tiempoMax && !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)) && entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid) && entity.Dificultad == p_dificultad)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error executing ReadFilter Receta.busquedaAvanzada.");
+            throw new DataException("Error executing ReadFilter Receta.busquedaAvanzada.", ex);
+        }
+    }
+
+    public async Task<IReadOnlyList<Receta>> BuscarNombreAsync(string p_nombre)
+    {
+        try
+        {
+            using var context = OpenSession();
+            return await context.Session.Query<Receta>()
+                .Where(entity => entity.Nombre == p_nombre)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error executing ReadFilter Receta.buscarNombre.");
+            throw new DataException("Error executing ReadFilter Receta.buscarNombre.", ex);
+        }
+    }
+
+    public async Task<IReadOnlyList<Receta>> RecetasPorNeveraAsync(int p_nevera_oid)
+    {
+        try
+        {
+            using var context = OpenSession();
+            return await context.Session.Query<Receta>()
+                .Where(entity => entity.Lineas.All(linea => linea.IngredienteCatalogo.IngredienteEnNevera.Any(nev => nev.Nevera.Id == p_nevera_oid && nev.Cantidad >= linea.CantidadNecesaria)))
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error executing ReadFilter Receta.recetasPorNevera.");
+            throw new DataException("Error executing ReadFilter Receta.recetasPorNevera.", ex);
+        }
+    }
+}

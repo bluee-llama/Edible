@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2"
+                   assembly="Edible.Domain"
+                   namespace="Edible.Domain.Entities">
+  <class name="Nevera" table="Nevera">
+    <id name="Id" column="id" type="Int32">
+      <generator class="hilo"/>
+    </id>
+    <many-to-one name="Usuario" class="Usuario">
+      <column name="FK_Usuario_usuario" not-null="true"/>
+    </many-to-one>
+    <bag name="IngredienteEnLaLista" cascade="all-delete-orphan" inverse="true">
+      <key>
+        <column name="FK_Nevera_nevera"/>
+      </key>
+      <one-to-many class="IngredienteCompra"/>
+    </bag>
+    <bag name="IngredienteEnLaNevera" cascade="all-delete-orphan" inverse="true">
+      <key>
+        <column name="FK_Nevera_nevera"/>
+      </key>
+      <one-to-many class="IngredienteNevera"/>
+    </bag>
+  </class>
+  <query name="NeveraReadAllHQL">from Nevera</query>
+</hibernate-mapping>
