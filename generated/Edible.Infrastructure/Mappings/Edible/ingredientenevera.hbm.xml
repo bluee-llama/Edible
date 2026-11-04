@@ -19,7 +19,7 @@
       <column name="FK_Nevera_nevera" not-null="true"/>
     </many-to-one>
     <many-to-one name="Receta" class="Receta">
-      <column name="FK_Receta_receta" not-null="true"/>
+      <column name="FK_Receta_receta" not-null="false"/>
     </many-to-one>
   </class>
   <query name="IngredienteNeveraReadAllHQL">from IngredienteNevera</query>
