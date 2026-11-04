@@ -81,15 +81,7 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
         {
             using var context = OpenSession();
             return await context.Session.Query<Receta>()
-                .Where(entity => 
-                    entity.DietaEspecial == p_dieta && 
-                    entity.ValoracionMedia >= p_notaMinima && 
-                    entity.TiempoRealizacion >= p_tiempoMin && 
-                    entity.TiempoRealizacion <= p_tiempoMax && 
-                    entity.Dificultad == p_dificultad &&
-                    !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)) && 
-                    entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid))
-                .ToListAsync();
+                .Where(entity => (p_dieta == DietaEspecial.ninguna || entity.DietaEspecial == p_dieta) && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && (p_tiempoMax <= 0 || entity.TiempoRealizacion <= p_tiempoMax) && (p_dificultad <= 0 || entity.Dificultad == p_dificultad) && (p_alergenoExcluido == Alergenos.ninguno || !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido))) && (p_ingrediente_oid <= 0 || entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid))).ToListAsync();
         }
         catch (Exception ex)
         {

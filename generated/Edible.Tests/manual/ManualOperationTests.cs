@@ -17,6 +17,9 @@ using NHibernate.Dialect;
 using NHibernate.Driver;
 using Edible.Application.Exceptions;
 using Edible.Infrastructure; 
+
+// Cada test crea/borra el esquema: no ejecutar en paralelo.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 /*PROTECTED REGION END*/
 
 namespace Edible.Tests.Manual;
@@ -45,6 +48,13 @@ public class Scenario : IAsyncDisposable
 
 public static class TestFixture
 {
+    private static void ExecuteSql(ISession session, string sql)
+    {
+        using var cmd = session.Connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.ExecuteNonQuery();
+    }
+
     public static async Task<Scenario> CreateScenarioAsync()
     {
         var configuration = new Configuration();
@@ -52,7 +62,7 @@ public static class TestFixture
             db.Dialect<SQLiteDialect>();
             db.Driver<SQLite20Driver>(); // Driver genérico compatible de NHibernate
             db.ConnectionProvider<NHibernate.Connection.DriverConnectionProvider>();
-            db.ConnectionString = "Data Source=:memory:;Mode=Memory;Cache=Shared";
+            db.ConnectionString = "Data Source=:memory:;Mode=Memory;Cache=Shared;Foreign Keys=False";
             db.ConnectionReleaseMode = ConnectionReleaseMode.OnClose;
         });
 
@@ -61,7 +71,22 @@ public static class TestFixture
         var sessionFactory = configuration.BuildSessionFactory();
         var session = sessionFactory.OpenSession();
 
-        new SchemaExport(configuration).Execute(false, true, false, session.Connection, null);
+        // Usuario <-> Nevera/ListaCompra tienen FKs not-null circulares. SQLite comprueba las FK en cada
+        // INSERT, así que se crean DEFERRABLE INITIALLY DEFERRED (se validan en el COMMIT) y además se
+        // desactiva foreign_keys en esta conexión. Con cualquiera de las dos basta; con ambas no hay dudas.
+        ExecuteSql(session, "PRAGMA foreign_keys = OFF;");
+
+        var script = new System.Collections.Generic.List<string>();
+        new SchemaExport(configuration).Execute(s => script.Add(s), false, false);
+        foreach (var sql in script)
+        {
+            var deferred = System.Text.RegularExpressions.Regex.Replace(
+                sql,
+                @"(references\s+\w+(?:\s*\([^)]*\))?(?:\s+on\s+(?:delete|update)\s+(?:cascade|set null|set default|restrict|no action))*)",
+                "$1 DEFERRABLE INITIALLY DEFERRED",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            ExecuteSql(session, deferred);
+        }
 
         var unitOfWork = new UnitOfWork(session);
 

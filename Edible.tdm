@@ -114,7 +114,7 @@ ConceptualModel Edible
                     p_ingrediente_oid : OID -> Ingrediente
                 ) : List<Object->Receta>
                 {
-                    filterLinQ = "entity => entity.DietaEspecial == p_dieta && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && entity.TiempoRealizacion <= p_tiempoMax && !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)) && entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid) && entity.Dificultad == p_dificultad"
+                    filterLinQ = "entity => (p_dieta == DietaEspecial.ninguna || entity.DietaEspecial == p_dieta) && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && (p_tiempoMax <= 0 || entity.TiempoRealizacion <= p_tiempoMax) && (p_dificultad <= 0 || entity.Dificultad == p_dificultad) && (p_alergenoExcluido == Alergenos.ninguno || !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido))) && (p_ingrediente_oid <= 0 || entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid))"
                 };
             public buscarNombre::ReadFilter (p_nombre : String) : List<Object->Receta>
                 {
