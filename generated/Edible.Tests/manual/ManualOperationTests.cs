@@ -3,13 +3,17 @@ using Edible.Application.UseCases.Comentario;
 using Edible.Application.UseCases.Nevera;
 using Edible.Application.UseCases.Receta;
 using Edible.Domain.Entities;
+<<<<<<< HEAD
 using Xunit;
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
 using Xunit.Abstractions;
 using Edible.Domain.Enums;
 
 /*PROTECTED REGION ID(ManualOperationTests_Imports) ENABLED START*/
 using System;
 using System.Threading.Tasks;
+<<<<<<< HEAD
 using NHibernate;
 using NHibernate.Cfg;
 using NHibernate.Tool.hbm2ddl;
@@ -17,6 +21,12 @@ using NHibernate.Dialect;
 using NHibernate.Driver;
 using Edible.Application.Exceptions;
 using Edible.Infrastructure; 
+=======
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Edible.Application.Exceptions;
+using Edible.Infrastructure.Persistence;
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
 /*PROTECTED REGION END*/
 
 namespace Edible.Tests.Manual;
@@ -24,6 +34,7 @@ namespace Edible.Tests.Manual;
 /*PROTECTED REGION ID(ManualOperationTests_Fixture) ENABLED START*/
 public class Scenario : IAsyncDisposable
 {
+<<<<<<< HEAD
     public ISessionFactory SessionFactory { get; }
     public ISession Session { get; }
     public UnitOfWork UnitOfWork { get; }
@@ -32,14 +43,30 @@ public class Scenario : IAsyncDisposable
     {
         SessionFactory = sessionFactory;
         Session = session;
+=======
+    public SqliteConnection Connection { get; }
+    public EdibleDbContext DbContext { get; }
+    public UnitOfWork UnitOfWork { get; }
+
+    public Scenario(SqliteConnection connection, EdibleDbContext dbContext, UnitOfWork unitOfWork)
+    {
+        Connection = connection;
+        DbContext = dbContext;
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         UnitOfWork = unitOfWork;
     }
 
     public async ValueTask DisposeAsync()
     {
+<<<<<<< HEAD
         Session.Dispose();
         SessionFactory.Dispose();
         await Task.CompletedTask;
+=======
+        await DbContext.DisposeAsync();
+        await Connection.CloseAsync();
+        await Connection.DisposeAsync();
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
     }
 }
 
@@ -47,6 +74,7 @@ public static class TestFixture
 {
     public static async Task<Scenario> CreateScenarioAsync()
     {
+<<<<<<< HEAD
         var configuration = new Configuration();
         configuration.DataBaseIntegration(db => {
             db.Dialect<SQLiteDialect>();
@@ -66,6 +94,21 @@ public static class TestFixture
         var unitOfWork = new UnitOfWork(session);
 
         return new Scenario(sessionFactory, session, unitOfWork);
+=======
+        var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<EdibleDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var dbContext = new EdibleDbContext(options);
+        await dbContext.Database.EnsureCreatedAsync();
+
+        var unitOfWork = new UnitOfWork(dbContext);
+
+        return new Scenario(connection, dbContext, unitOfWork);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
     }
 }
 /*PROTECTED REGION END*/
@@ -85,8 +128,12 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var usuarioService = new UsuarioService(scenario.UnitOfWork);
+<<<<<<< HEAD
         var usuario = new Usuario(); // Sin propiedades custom para evitar errores de atributos
         await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
+=======
+        var usuario = await usuarioService.CrearAsync("Hugo Test", "hugo@test.com", "pass123", false);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
@@ -105,8 +152,14 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:assert) ENABLED START*/
+<<<<<<< HEAD
         var usuarioBD = await scenario.UnitOfWork.UsuarioRepository.ReadAsync(usuarioId);
         Assert.NotNull(usuarioBD);
+=======
+        var usuarioBD = await service!.ReadOIDAsync(usuarioId);
+        Assert.NotNull(usuarioBD);
+        Assert.True(usuarioBD.EsPublico);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -118,8 +171,12 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var usuarioService = new UsuarioService(scenario.UnitOfWork);
+<<<<<<< HEAD
         var usuario = new Usuario();
         await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
+=======
+        var usuario = await usuarioService.CrearAsync("Hugo Test", "hugo@test.com", "pass123", true);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
@@ -138,8 +195,14 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:assert) ENABLED START*/
+<<<<<<< HEAD
         var usuarioBD = await scenario.UnitOfWork.UsuarioRepository.ReadAsync(usuarioId);
         Assert.NotNull(usuarioBD);
+=======
+        var usuarioBD = await service!.ReadOIDAsync(usuarioId);
+        Assert.NotNull(usuarioBD);
+        Assert.False(usuarioBD.EsPublico);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -149,17 +212,35 @@ public sealed class ManualOperationTests
     public async Task Nevera_RecorrerListaCompra_CustomTransaction_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:arrange) ENABLED START*/
+<<<<<<< HEAD
         /*PROTECTED REGION END*/
+=======
+        // Reservado para Persona 2
+        /*PROTECTED REGION END*/
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         var operationName = "recorrerListaCompra";
         var operationType = "CustomTransaction";
         var executeManualInvocation = false;
         NeveraUseCase? useCase = null;
         object? invocationResult = null;
+<<<<<<< HEAD
         if (executeManualInvocation) {
         /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:invoke) ENABLED START*/
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
+=======
+
+        if (executeManualInvocation)
+        {
+        /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:invoke) ENABLED START*/
+        invocationResult = await ((dynamic)useCase!).RecorrerListaCompraAsync(default(int));
+        /*PROTECTED REGION END*/
+        }
+        _ = invocationResult;
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:assert) ENABLED START*/
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -171,8 +252,12 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:Receta:compartir:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var recetaService = new RecetaService(scenario.UnitOfWork);
+<<<<<<< HEAD
         var receta = new Receta();
         await scenario.UnitOfWork.RecetaRepository.SaveAsync(receta);
+=======
+        var receta = await recetaService.CrearAsync("Pasta Carbonara", "Receta de pasta", DietaEspecial.ninguna, 20.0f, 4.5f);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         int recetaId = receta.Id;
         /*PROTECTED REGION END*/
 
@@ -191,7 +276,11 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Receta:compartir:assert) ENABLED START*/
+<<<<<<< HEAD
         var recetaBD = await scenario.UnitOfWork.RecetaRepository.ReadAsync(recetaId);
+=======
+        var recetaBD = await service!.ReadOIDAsync(recetaId);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         Assert.NotNull(recetaBD);
 
         EnsureContractOutput(operationName, operationType);
@@ -202,17 +291,35 @@ public sealed class ManualOperationTests
     public async Task Receta_ComprobarIngredientesDisponibles_CustomTransaction_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:arrange) ENABLED START*/
+<<<<<<< HEAD
         /*PROTECTED REGION END*/
+=======
+        // Reservado para Persona 3
+        /*PROTECTED REGION END*/
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         var operationName = "comprobarIngredientesDisponibles";
         var operationType = "CustomTransaction";
         var executeManualInvocation = false;
         RecetaUseCase? useCase = null;
         object? invocationResult = null;
+<<<<<<< HEAD
         if (executeManualInvocation) {
         /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:invoke) ENABLED START*/
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
+=======
+
+        if (executeManualInvocation)
+        {
+        /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:invoke) ENABLED START*/
+        invocationResult = await ((dynamic)useCase!).ComprobarIngredientesDisponiblesAsync("Sample Receta Nombre", "Sample Receta Descripcion", DietaEspecial.vegetariana, 1.5f, default(int));
+        /*PROTECTED REGION END*/
+        }
+        _ = invocationResult;
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:assert) ENABLED START*/
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -224,8 +331,12 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var ingredienteCompraService = new IngredienteCompraService(scenario.UnitOfWork);
+<<<<<<< HEAD
         var item = new IngredienteCompra();
         await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
+=======
+        var item = await ingredienteCompraService.CrearAsync("Leche", false);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         int itemId = item.Id;
         /*PROTECTED REGION END*/
 
@@ -244,8 +355,15 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:assert) ENABLED START*/
+<<<<<<< HEAD
         var itemBD = await scenario.UnitOfWork.IngredienteCompraRepository.ReadAsync(itemId);
         Assert.NotNull(itemBD);
+=======
+        var itemBD = await service!.ReadOIDAsync(itemId);
+        Assert.NotNull(itemBD);
+        Assert.True(itemBD.Comprado);
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -256,8 +374,12 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var ingredienteCompraService = new IngredienteCompraService(scenario.UnitOfWork);
+<<<<<<< HEAD
         var item = new IngredienteCompra();
         await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
+=======
+        var item = await ingredienteCompraService.CrearAsync("Pan", true);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         int itemId = item.Id;
         /*PROTECTED REGION END*/
 
@@ -276,8 +398,15 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:assert) ENABLED START*/
+<<<<<<< HEAD
         var itemBD = await scenario.UnitOfWork.IngredienteCompraRepository.ReadAsync(itemId);
         Assert.NotNull(itemBD);
+=======
+        var itemBD = await service!.ReadOIDAsync(itemId);
+        Assert.NotNull(itemBD);
+        Assert.False(itemBD.Comprado);
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -288,8 +417,12 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var ingredienteNeveraService = new IngredienteNeveraService(scenario.UnitOfWork);
+<<<<<<< HEAD
         var item = new IngredienteNevera();
         await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(item);
+=======
+        var item = await ingredienteNeveraService.CrearAsync(DateTime.UtcNow.AddDays(-2), EstadoCaducidad.Optimo);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         int itemId = item.Id;
         /*PROTECTED REGION END*/
 
@@ -308,8 +441,14 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:assert) ENABLED START*/
+<<<<<<< HEAD
         var itemBD = await scenario.UnitOfWork.IngredienteNeveraRepository.ReadAsync(itemId);
         Assert.NotNull(itemBD);
+=======
+        var itemBD = await service!.ReadOIDAsync(itemId);
+        Assert.NotNull(itemBD);
+        Assert.Equal(EstadoCaducidad.Caducado, itemBD.EstadoCaducidad);
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -319,17 +458,35 @@ public sealed class ManualOperationTests
     public async Task Comentario_RecalcularValoracionMedia_CustomTransaction_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:arrange) ENABLED START*/
+<<<<<<< HEAD
         /*PROTECTED REGION END*/
+=======
+        // Reservado para Persona 4
+        /*PROTECTED REGION END*/
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         var operationName = "recalcularValoracionMedia";
         var operationType = "CustomTransaction";
         var executeManualInvocation = false;
         ComentarioUseCase? useCase = null;
         object? invocationResult = null;
+<<<<<<< HEAD
         if (executeManualInvocation) {
         /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:invoke) ENABLED START*/
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
+=======
+
+        if (executeManualInvocation)
+        {
+        /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:invoke) ENABLED START*/
+        invocationResult = await ((dynamic)useCase!).RecalcularValoracionMediaAsync(1, "Sample Comentario Titulo", 1, default(int), default(int));
+        /*PROTECTED REGION END*/
+        }
+        _ = invocationResult;
+
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:assert) ENABLED START*/
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/

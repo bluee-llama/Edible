@@ -6,10 +6,13 @@ using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
 using Edible.Infrastructure.Exceptions;
+<<<<<<< HEAD
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
 
 namespace Edible.Infrastructure.Repositories;
 
@@ -76,11 +79,15 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
 
     public async Task<IReadOnlyList<Receta>> BusquedaAvanzadaAsync(DietaEspecial p_dieta, float p_notaMinima, int p_tiempoMin, int p_tiempoMax, int p_dificultad, Alergenos p_alergenoExcluido, int p_ingrediente_oid)
     {
+<<<<<<< HEAD
         /*PROTECTED REGION ID(Edible.Infrastructure.Repositories_Receta_busquedaAvanzada) ENABLED START*/
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         try
         {
             using var context = OpenSession();
             return await context.Session.Query<Receta>()
+<<<<<<< HEAD
                 .Where(entity => 
                     entity.DietaEspecial == p_dieta && 
                     entity.ValoracionMedia >= p_notaMinima && 
@@ -89,6 +96,9 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
                     entity.Dificultad == p_dificultad &&
                     !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)) && 
                     entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid))
+=======
+                .Where(entity => entity.DietaEspecial == p_dieta && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && entity.TiempoRealizacion <= p_tiempoMax && !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)) && entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid) && entity.Dificultad == p_dificultad)
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
                 .ToListAsync();
         }
         catch (Exception ex)
@@ -96,17 +106,27 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
             Logger?.LogError(ex, "Error executing ReadFilter Receta.busquedaAvanzada.");
             throw new DataException("Error executing ReadFilter Receta.busquedaAvanzada.", ex);
         }
+<<<<<<< HEAD
         /*PROTECTED REGION END*/
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
     }
 
     public async Task<IReadOnlyList<Receta>> BuscarNombreAsync(string p_nombre)
     {
+<<<<<<< HEAD
         /*PROTECTED REGION ID(Edible.Infrastructure.Repositories_Receta_buscarNombre) ENABLED START*/
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         try
         {
             using var context = OpenSession();
             return await context.Session.Query<Receta>()
+<<<<<<< HEAD
                 .Where(entity => entity.Nombre.ToLower().Contains(p_nombre.ToLower()))
+=======
+                .Where(entity => entity.Nombre == p_nombre)
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
                 .ToListAsync();
         }
         catch (Exception ex)
@@ -114,19 +134,29 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
             Logger?.LogError(ex, "Error executing ReadFilter Receta.buscarNombre.");
             throw new DataException("Error executing ReadFilter Receta.buscarNombre.", ex);
         }
+<<<<<<< HEAD
         /*PROTECTED REGION END*/
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
     }
 
     public async Task<IReadOnlyList<Receta>> RecetasPorNeveraAsync(int p_nevera_oid)
     {
+<<<<<<< HEAD
         /*PROTECTED REGION ID(Edible.Infrastructure.Repositories_Receta_recetasPorNevera) ENABLED START*/
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
         try
         {
             using var context = OpenSession();
             return await context.Session.Query<Receta>()
+<<<<<<< HEAD
                 .Where(entity => entity.Lineas.All(linea => 
                     linea.IngredienteCatalogo.IngredienteEnNevera.Any(nev => 
                         nev.Nevera.Id == p_nevera_oid && nev.Cantidad >= linea.CantidadNecesaria)))
+=======
+                .Where(entity => entity.Lineas.All(linea => linea.IngredienteCatalogo.IngredienteEnNevera.Any(nev => nev.Nevera.Id == p_nevera_oid && nev.Cantidad >= linea.CantidadNecesaria)))
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
                 .ToListAsync();
         }
         catch (Exception ex)
@@ -134,6 +164,9 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
             Logger?.LogError(ex, "Error executing ReadFilter Receta.recetasPorNevera.");
             throw new DataException("Error executing ReadFilter Receta.recetasPorNevera.", ex);
         }
+<<<<<<< HEAD
         /*PROTECTED REGION END*/
+=======
+>>>>>>> bbdcbb95ef26f24cd06e4610fa13c9b01fb6d5d4
     }
 }
