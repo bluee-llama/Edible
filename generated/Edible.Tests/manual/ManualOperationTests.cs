@@ -3,10 +3,72 @@ using Edible.Application.UseCases.Comentario;
 using Edible.Application.UseCases.Nevera;
 using Edible.Application.UseCases.Receta;
 using Edible.Domain.Entities;
+using Xunit;
 using Xunit.Abstractions;
 using Edible.Domain.Enums;
 
+/*PROTECTED REGION ID(ManualOperationTests_Imports) ENABLED START*/
+using System;
+using System.Threading.Tasks;
+using NHibernate;
+using NHibernate.Cfg;
+using NHibernate.Tool.hbm2ddl;
+using NHibernate.Dialect;
+using NHibernate.Driver;
+using Edible.Application.Exceptions;
+using Edible.Infrastructure; 
+/*PROTECTED REGION END*/
+
 namespace Edible.Tests.Manual;
+
+/*PROTECTED REGION ID(ManualOperationTests_Fixture) ENABLED START*/
+public class Scenario : IAsyncDisposable
+{
+    public ISessionFactory SessionFactory { get; }
+    public ISession Session { get; }
+    public UnitOfWork UnitOfWork { get; }
+
+    public Scenario(ISessionFactory sessionFactory, ISession session, UnitOfWork unitOfWork)
+    {
+        SessionFactory = sessionFactory;
+        Session = session;
+        UnitOfWork = unitOfWork;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Session.Dispose();
+        SessionFactory.Dispose();
+        await Task.CompletedTask;
+    }
+}
+
+public static class TestFixture
+{
+    public static async Task<Scenario> CreateScenarioAsync()
+    {
+        var configuration = new Configuration();
+        configuration.DataBaseIntegration(db => {
+            db.Dialect<SQLiteDialect>();
+            db.Driver<SQLite20Driver>(); // Driver genérico compatible de NHibernate
+            db.ConnectionProvider<NHibernate.Connection.DriverConnectionProvider>();
+            db.ConnectionString = "Data Source=:memory:;Mode=Memory;Cache=Shared";
+            db.ConnectionReleaseMode = ConnectionReleaseMode.OnClose;
+        });
+
+        configuration.AddAssembly(typeof(Edible.Infrastructure.Repositories.RepositoryBase<>).Assembly);
+
+        var sessionFactory = configuration.BuildSessionFactory();
+        var session = sessionFactory.OpenSession();
+
+        new SchemaExport(configuration).Execute(false, true, false, session.Connection, null);
+
+        var unitOfWork = new UnitOfWork(session);
+
+        return new Scenario(sessionFactory, session, unitOfWork);
+    }
+}
+/*PROTECTED REGION END*/
 
 public sealed class ManualOperationTests
 {
@@ -21,24 +83,31 @@ public sealed class ManualOperationTests
     public async Task Usuario_PonerPublico_Custom_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:arrange) ENABLED START*/
-        // Create a test unit of work and assign service before enabling the generated invocation.
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var usuarioService = new UsuarioService(scenario.UnitOfWork);
+        var usuario = new Usuario(); // Sin propiedades custom para evitar errores de atributos
+        await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
+        int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "ponerPublico";
         var operationType = "Custom";
-        var executeManualInvocation = false;
-        UsuarioService? service = null;
+        var executeManualInvocation = true;
+        UsuarioService? service = usuarioService;
         object? invocationResult = null;
 
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:invoke) ENABLED START*/
-        await ((dynamic)service!).PonerPublicoAsync(default(int));
+        await service!.PonerPublicoAsync(usuarioId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:assert) ENABLED START*/
+        var usuarioBD = await scenario.UnitOfWork.UsuarioRepository.ReadAsync(usuarioId);
+        Assert.NotNull(usuarioBD);
+
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -47,24 +116,31 @@ public sealed class ManualOperationTests
     public async Task Usuario_PonerPrivado_Custom_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:arrange) ENABLED START*/
-        // Create a test unit of work and assign service before enabling the generated invocation.
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var usuarioService = new UsuarioService(scenario.UnitOfWork);
+        var usuario = new Usuario();
+        await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
+        int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "ponerPrivado";
         var operationType = "Custom";
-        var executeManualInvocation = false;
-        UsuarioService? service = null;
+        var executeManualInvocation = true;
+        UsuarioService? service = usuarioService;
         object? invocationResult = null;
 
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:invoke) ENABLED START*/
-        await ((dynamic)service!).PonerPrivadoAsync(default(int));
+        await service!.PonerPrivadoAsync(usuarioId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:assert) ENABLED START*/
+        var usuarioBD = await scenario.UnitOfWork.UsuarioRepository.ReadAsync(usuarioId);
+        Assert.NotNull(usuarioBD);
+
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -73,23 +149,17 @@ public sealed class ManualOperationTests
     public async Task Nevera_RecorrerListaCompra_CustomTransaction_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:arrange) ENABLED START*/
-        // Create a test unit of work and assign useCase before enabling the generated invocation.
         /*PROTECTED REGION END*/
-
         var operationName = "recorrerListaCompra";
         var operationType = "CustomTransaction";
         var executeManualInvocation = false;
         NeveraUseCase? useCase = null;
         object? invocationResult = null;
-
-        if (executeManualInvocation)
-        {
+        if (executeManualInvocation) {
         /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:invoke) ENABLED START*/
-        invocationResult = await ((dynamic)useCase!).RecorrerListaCompraAsync(default(int));
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
-
         /*PROTECTED REGION ID(test:customTransaction:Nevera:recorrerListaCompra:assert) ENABLED START*/
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -99,24 +169,31 @@ public sealed class ManualOperationTests
     public async Task Receta_Compartir_Custom_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:custom:Receta:compartir:arrange) ENABLED START*/
-        // Create a test unit of work and assign service before enabling the generated invocation.
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var recetaService = new RecetaService(scenario.UnitOfWork);
+        var receta = new Receta();
+        await scenario.UnitOfWork.RecetaRepository.SaveAsync(receta);
+        int recetaId = receta.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "compartir";
         var operationType = "Custom";
-        var executeManualInvocation = false;
-        RecetaService? service = null;
+        var executeManualInvocation = true;
+        RecetaService? service = recetaService;
         object? invocationResult = null;
 
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:Receta:compartir:invoke) ENABLED START*/
-        await ((dynamic)service!).CompartirAsync(default(int));
+        await service!.CompartirAsync(recetaId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Receta:compartir:assert) ENABLED START*/
+        var recetaBD = await scenario.UnitOfWork.RecetaRepository.ReadAsync(recetaId);
+        Assert.NotNull(recetaBD);
+
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -125,23 +202,17 @@ public sealed class ManualOperationTests
     public async Task Receta_ComprobarIngredientesDisponibles_CustomTransaction_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:arrange) ENABLED START*/
-        // Create a test unit of work and assign useCase before enabling the generated invocation.
         /*PROTECTED REGION END*/
-
         var operationName = "comprobarIngredientesDisponibles";
         var operationType = "CustomTransaction";
         var executeManualInvocation = false;
         RecetaUseCase? useCase = null;
         object? invocationResult = null;
-
-        if (executeManualInvocation)
-        {
+        if (executeManualInvocation) {
         /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:invoke) ENABLED START*/
-        invocationResult = await ((dynamic)useCase!).ComprobarIngredientesDisponiblesAsync("Sample Receta Nombre", "Sample Receta Descripcion", DietaEspecial.vegetariana, 1.5f, default(int));
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
-
         /*PROTECTED REGION ID(test:customTransaction:Receta:comprobarIngredientesDisponibles:assert) ENABLED START*/
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -151,24 +222,30 @@ public sealed class ManualOperationTests
     public async Task IngredienteCompra_MarcarComprado_Custom_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:arrange) ENABLED START*/
-        // Create a test unit of work and assign service before enabling the generated invocation.
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var ingredienteCompraService = new IngredienteCompraService(scenario.UnitOfWork);
+        var item = new IngredienteCompra();
+        await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
+        int itemId = item.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "marcarComprado";
         var operationType = "Custom";
-        var executeManualInvocation = false;
-        IngredienteCompraService? service = null;
+        var executeManualInvocation = true;
+        IngredienteCompraService? service = ingredienteCompraService;
         object? invocationResult = null;
 
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:invoke) ENABLED START*/
-        await ((dynamic)service!).MarcarCompradoAsync(default(int));
+        await service!.MarcarCompradoAsync(itemId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:assert) ENABLED START*/
+        var itemBD = await scenario.UnitOfWork.IngredienteCompraRepository.ReadAsync(itemId);
+        Assert.NotNull(itemBD);
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -177,24 +254,30 @@ public sealed class ManualOperationTests
     public async Task IngredienteCompra_DesmarcarComprado_Custom_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:arrange) ENABLED START*/
-        // Create a test unit of work and assign service before enabling the generated invocation.
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var ingredienteCompraService = new IngredienteCompraService(scenario.UnitOfWork);
+        var item = new IngredienteCompra();
+        await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
+        int itemId = item.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "desmarcarComprado";
         var operationType = "Custom";
-        var executeManualInvocation = false;
-        IngredienteCompraService? service = null;
+        var executeManualInvocation = true;
+        IngredienteCompraService? service = ingredienteCompraService;
         object? invocationResult = null;
 
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:invoke) ENABLED START*/
-        await ((dynamic)service!).DesmarcarCompradoAsync(default(int));
+        await service!.DesmarcarCompradoAsync(itemId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:assert) ENABLED START*/
+        var itemBD = await scenario.UnitOfWork.IngredienteCompraRepository.ReadAsync(itemId);
+        Assert.NotNull(itemBD);
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -203,24 +286,31 @@ public sealed class ManualOperationTests
     public async Task IngredienteNevera_ComprobarCaducidad_Custom_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:arrange) ENABLED START*/
-        // Create a test unit of work and assign service before enabling the generated invocation.
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var ingredienteNeveraService = new IngredienteNeveraService(scenario.UnitOfWork);
+        var item = new IngredienteNevera();
+        await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(item);
+        int itemId = item.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "comprobarCaducidad";
         var operationType = "Custom";
-        var executeManualInvocation = false;
-        IngredienteNeveraService? service = null;
+        var executeManualInvocation = true;
+        IngredienteNeveraService? service = ingredienteNeveraService;
         object? invocationResult = null;
 
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:invoke) ENABLED START*/
-        await ((dynamic)service!).ComprobarCaducidadAsync(default(int));
+        await service!.ComprobarCaducidadAsync(itemId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:assert) ENABLED START*/
+        var itemBD = await scenario.UnitOfWork.IngredienteNeveraRepository.ReadAsync(itemId);
+        Assert.NotNull(itemBD);
+
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -229,23 +319,17 @@ public sealed class ManualOperationTests
     public async Task Comentario_RecalcularValoracionMedia_CustomTransaction_Manual_Contract()
     {
         /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:arrange) ENABLED START*/
-        // Create a test unit of work and assign useCase before enabling the generated invocation.
         /*PROTECTED REGION END*/
-
         var operationName = "recalcularValoracionMedia";
         var operationType = "CustomTransaction";
         var executeManualInvocation = false;
         ComentarioUseCase? useCase = null;
         object? invocationResult = null;
-
-        if (executeManualInvocation)
-        {
+        if (executeManualInvocation) {
         /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:invoke) ENABLED START*/
-        invocationResult = await ((dynamic)useCase!).RecalcularValoracionMediaAsync(1, "Sample Comentario Titulo", 1, default(int), default(int));
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
-
         /*PROTECTED REGION ID(test:customTransaction:Comentario:recalcularValoracionMedia:assert) ENABLED START*/
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -274,5 +358,4 @@ public sealed class ManualOperationTests
         var status = condition ? "[OK] " : "[FAIL] ";
         _output.WriteLine($"{color}{status}{message}{ResetColor}");
     }
-
 }
