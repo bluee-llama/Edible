@@ -24,11 +24,15 @@ public sealed partial class RecetaUseCase
             await _unitOfWork.BeginTransactionAsync("RecetaUseCase.ComprobarIngredientesDisponiblesAsync");
             recetaService = new RecetaService(_unitOfWork);
 
-            int idRecetaObjetivo = 1; 
-            int idNeveraObjetivo = 1; 
+            // La nevera es la del chef indicado y la receta se busca por nombre dentro de sus recetas.
+            var chef = await _unitOfWork.ChefRepository.ReadAsync(p_chef_oid)
+                ?? throw new ModelException("El chef indicado no existe.");
+            int idNeveraObjetivo = chef.Nevera.Id;
 
-            result = await _unitOfWork.RecetaRepository.ReadAsync(idRecetaObjetivo)
+            var recetasCoincidentes = await _unitOfWork.RecetaRepository.BuscarNombreAsync(p_nombre);
+            result = recetasCoincidentes.FirstOrDefault(r => r.Chef != null && r.Chef.Id == p_chef_oid)
                 ?? throw new ModelException("La receta indicada no existe.");
+            int idRecetaObjetivo = result.Id;
 
             // SOLUCIÓN: Usamos ReadAllAsync y filtramos en memoria
             var todasLineas = await _unitOfWork.LineaRecetaRepository.ReadAllAsync();

@@ -110,8 +110,7 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var usuarioService = new UsuarioService(scenario.UnitOfWork);
-        var usuario = new Usuario(); // Sin propiedades custom para evitar errores de atributos
-        await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioPublico");
         int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
@@ -143,8 +142,7 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var usuarioService = new UsuarioService(scenario.UnitOfWork);
-        var usuario = new Usuario();
-        await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioPrivado");
         int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
@@ -196,8 +194,8 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:Receta:compartir:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var recetaService = new RecetaService(scenario.UnitOfWork);
-        var receta = new Receta();
-        await scenario.UnitOfWork.RecetaRepository.SaveAsync(receta);
+        var chef = await RecetaScenarioHelper.CrearChefAsync(scenario.UnitOfWork, "ChefCompartir");
+        var receta = await RecetaScenarioHelper.CrearRecetaAsync(scenario.UnitOfWork, chef, "Receta compartir", DietaEspecial.ninguna, 4.0f, 10, 1);
         int recetaId = receta.Id;
         /*PROTECTED REGION END*/
 
@@ -249,7 +247,9 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var ingredienteCompraService = new IngredienteCompraService(scenario.UnitOfWork);
-        var item = new IngredienteCompra();
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioCompra");
+        var ingrediente = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Leche");
+        var item = new IngredienteCompra { Cantidad = 1, Comprado = false, Nevera = usuario.Nevera, ListaCompra = usuario.ListaCompra, IngredienteCatalogo = ingrediente };
         await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
         int itemId = item.Id;
         /*PROTECTED REGION END*/
@@ -281,7 +281,9 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var ingredienteCompraService = new IngredienteCompraService(scenario.UnitOfWork);
-        var item = new IngredienteCompra();
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioCompra");
+        var ingrediente = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Leche");
+        var item = new IngredienteCompra { Cantidad = 1, Comprado = true, Nevera = usuario.Nevera, ListaCompra = usuario.ListaCompra, IngredienteCatalogo = ingrediente };
         await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
         int itemId = item.Id;
         /*PROTECTED REGION END*/
@@ -313,7 +315,9 @@ public sealed class ManualOperationTests
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:arrange) ENABLED START*/
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var ingredienteNeveraService = new IngredienteNeveraService(scenario.UnitOfWork);
-        var item = new IngredienteNevera();
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioCaducidad");
+        var ingrediente = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Yogur");
+        var item = new IngredienteNevera { Cantidad = 1, FechaCaducidad = DateTime.UtcNow.AddDays(5), IngredienteCatalogo = ingrediente, Nevera = usuario.Nevera };
         await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(item);
         int itemId = item.Id;
         /*PROTECTED REGION END*/

@@ -17,19 +17,13 @@ public class RecetaTests
         await using var scenario = await TestFixture.CreateScenarioAsync();
         
         // Creamos el ciclo de Nevera y Usuario guardando primero el contenedor principal con cascada
-        var usuario = new Usuario();
-        var nevera = new Nevera { Usuario = usuario };
-        usuario.Nevera = nevera;
-
-        await scenario.UnitOfWork.NeveraRepository.SaveAsync(nevera);
-
-        var chef = new Chef { Nevera = nevera };
-        await scenario.UnitOfWork.ChefRepository.SaveAsync(chef);
+        var chef = await RecetaScenarioHelper.CrearChefAsync(scenario.UnitOfWork, "ChefTest");
+        var nevera = chef.Nevera;
 
         var ingrediente = new Ingrediente { Nombre = "Huevos" };
         await scenario.UnitOfWork.IngredienteRepository.SaveAsync(ingrediente);
 
-        var ingNevera = new IngredienteNevera { Cantidad = 6, IngredienteCatalogo = ingrediente, Nevera = nevera };
+        var ingNevera = new IngredienteNevera { Cantidad = 6, FechaCaducidad = DateTime.UtcNow.AddDays(5), IngredienteCatalogo = ingrediente, Nevera = nevera };
         await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(ingNevera);
 
         var receta = new Receta { Nombre = "Tortilla", Descripcion = "Rica", DietaEspecial = DietaEspecial.ninguna, ValoracionMedia = 5.0f, Chef = chef };
@@ -41,7 +35,7 @@ public class RecetaTests
         var useCase = new RecetaUseCase(scenario.UnitOfWork);
 
         // Act
-        var resultado = await useCase.ComprobarIngredientesDisponiblesAsync("Tortilla", "Desc", DietaEspecial.ninguna, 5.0f, 1);
+        var resultado = await useCase.ComprobarIngredientesDisponiblesAsync("Tortilla", "Desc", DietaEspecial.ninguna, 5.0f, chef.Id);
         
         // Assert
         Assert.NotNull(resultado);
@@ -54,19 +48,13 @@ public class RecetaTests
         // Arrange
         await using var scenario = await TestFixture.CreateScenarioAsync();
         
-        var usuario = new Usuario();
-        var nevera = new Nevera { Usuario = usuario };
-        usuario.Nevera = nevera;
-
-        await scenario.UnitOfWork.NeveraRepository.SaveAsync(nevera);
-
-        var chef = new Chef { Nevera = nevera };
-        await scenario.UnitOfWork.ChefRepository.SaveAsync(chef);
+        var chef = await RecetaScenarioHelper.CrearChefAsync(scenario.UnitOfWork, "ChefTest");
+        var nevera = chef.Nevera;
 
         var ingrediente = new Ingrediente { Nombre = "Huevos" };
         await scenario.UnitOfWork.IngredienteRepository.SaveAsync(ingrediente);
 
-        var ingNevera = new IngredienteNevera { Cantidad = 2, IngredienteCatalogo = ingrediente, Nevera = nevera };
+        var ingNevera = new IngredienteNevera { Cantidad = 2, FechaCaducidad = DateTime.UtcNow.AddDays(5), IngredienteCatalogo = ingrediente, Nevera = nevera };
         await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(ingNevera);
 
         var receta = new Receta { Nombre = "Tortilla", Descripcion = "Rica", DietaEspecial = DietaEspecial.ninguna, Chef = chef };
@@ -79,7 +67,7 @@ public class RecetaTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ModelException>(() => 
-            useCase.ComprobarIngredientesDisponiblesAsync("Tortilla", "Desc", DietaEspecial.ninguna, 5.0f, 1));
+            useCase.ComprobarIngredientesDisponiblesAsync("Tortilla", "Desc", DietaEspecial.ninguna, 5.0f, chef.Id));
     }
 
     [Fact]
@@ -88,14 +76,8 @@ public class RecetaTests
         // Arrange
         await using var scenario = await TestFixture.CreateScenarioAsync();
         
-        var usuario = new Usuario();
-        var nevera = new Nevera { Usuario = usuario };
-        usuario.Nevera = nevera;
-
-        await scenario.UnitOfWork.NeveraRepository.SaveAsync(nevera);
-
-        var chef = new Chef { Nevera = nevera };
-        await scenario.UnitOfWork.ChefRepository.SaveAsync(chef);
+        var chef = await RecetaScenarioHelper.CrearChefAsync(scenario.UnitOfWork, "ChefTest");
+        var nevera = chef.Nevera;
 
         var receta1 = new Receta { Nombre = "Tortilla de patatas", Chef = chef };
         var receta2 = new Receta { Nombre = "Sopa de ajo", Chef = chef };
@@ -117,11 +99,8 @@ public class RecetaTests
         // Arrange
         await using var scenario = await TestFixture.CreateScenarioAsync();
         
-        var usuario = new Usuario();
-        var nevera = new Nevera { Usuario = usuario };
-        usuario.Nevera = nevera;
-
-        await scenario.UnitOfWork.NeveraRepository.SaveAsync(nevera);
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioTest");
+        var nevera = usuario.Nevera;
         
         // Act
         var resultados = await scenario.UnitOfWork.RecetaRepository.RecetasPorNeveraAsync(nevera.Id);
