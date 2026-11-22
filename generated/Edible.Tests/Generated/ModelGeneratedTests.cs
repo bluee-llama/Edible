@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using NHibernate.Cfg;
-using NHibernate.Tool.hbm2ddl;
 using Edible.Application.Services;
 using Edible.Domain.Entities;
 using Edible.Infrastructure;
-using Edible.Infrastructure.Logging;
+using Edible.Infrastructure.Data;
 using Xunit.Abstractions;
 using Edible.Domain.Enums;
 
@@ -87,7 +87,7 @@ public sealed class ModelGeneratedTests
         // </haria-protected>
 
         var operationName = "busquedaAvanzada";
-        var filterExpression = "entity => entity.DietaEspecial == p_dieta && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && entity.TiempoRealizacion <= p_tiempoMax && !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)) && entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid) && entity.Dificultad == p_dificultad";
+        var filterExpression = "entity => (p_dieta == DietaEspecial.ninguna || entity.DietaEspecial == p_dieta) && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && (p_tiempoMax <= 0 || entity.TiempoRealizacion <= p_tiempoMax) && (p_dificultad <= 0 || entity.Dificultad == p_dificultad) && (p_alergenoExcluido == Alergenos.ninguno || !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido))) && (p_ingrediente_oid <= 0 || entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid))";
 
         // <haria-protected id="test:filter:Receta:busquedaAvanzada:assert">
         Ensure(!string.IsNullOrWhiteSpace(operationName), "Receta.busquedaAvanzada declares the generated operation name.");
@@ -147,36 +147,56 @@ public sealed class ModelGeneratedTests
     [Trait("Category", "Database")]
     public async Task Generated_Crud_And_Associations_Should_Work_Against_Database()
     {
-        var cfg = CreateNHibernateConfiguration();
-        new SchemaUpdate(cfg).Execute(false, true);
+        var options = CreateDbContextOptions();
         using var loggerFactory = LoggerFactory.Create(logging => logging.SetMinimumLevel(LogLevel.Warning));
-        using var unitOfWorkFactory = new UnitOfWorkFactory(cfg, loggerFactory);
+        await using (var schemaDb = new EdibleDbContext(options))
+        {
+            await schemaDb.Database.EnsureCreatedAsync();
+        }
 
-            var chefService = new ChefService(unitOfWorkFactory);
-            var sampleChef = await chefService.NewAsync("Sample Chef Name", "Password123!", true, DietaEspecial.ninguna, new Nevera(), new ListaCompra());
-            var sampleNevera = sampleChef.Nevera;
-            var sampleListaCompra = sampleChef.ListaCompra;
-            Ensure(sampleChef.Nevera?.Equals(sampleNevera) == true, "Chef.new relates sampleChef and sampleNevera.");
-            Ensure(sampleChef.ListaCompra?.Equals(sampleListaCompra) == true, "Chef.new relates sampleChef and sampleListaCompra.");
-            Ensure(sampleNevera.Usuario?.Equals(sampleChef) == true, "Chef.new relates sampleNevera and sampleChef.");
-            Ensure(sampleListaCompra.Usuario?.Equals(sampleChef) == true, "Chef.new relates sampleListaCompra and sampleChef.");
-            var sampleChefReadBack = await chefService.ReadOIDAsync(sampleChef.Id);
-            Ensure(sampleChefReadBack is not null, "Chef read by OID returns the generated entity.");
-            var sampleChefReadAll = await chefService.ReadAllAsync();
-            Ensure(sampleChefReadAll.Count > 0, "Chef read all returns generated data.");
-            await chefService.ModifyAsync(sampleChef.Id, "Sample Chef Name", "Password123!", true, DietaEspecial.ninguna);
-            Ensure(await chefService.ReadOIDAsync(sampleChef.Id) is not null, "Chef modify keeps the entity readable.");
+            await using var db = new EdibleDbContext(options);
+            await using var unitOfWork = new UnitOfWork(db, loggerFactory);
 
-            var ingredienteService = new IngredienteService(unitOfWorkFactory);
+            var ingredienteService = new IngredienteService(unitOfWork);
             var sampleIngrediente = await ingredienteService.NewAsync("Sample Ingrediente Nombre", TipoIngrediente.ninguno, 7, 7.5f, 7.5f, 7.5f, 7.5f, new List<Alergenos> { Alergenos.ninguno }, new List<DietaEspecial> { DietaEspecial.ninguna });
             var sampleIngredienteReadBack = await ingredienteService.ReadOIDAsync(sampleIngrediente.Id);
             Ensure(sampleIngredienteReadBack is not null, "Ingrediente read by OID returns the generated entity.");
             var sampleIngredienteReadAll = await ingredienteService.ReadAllAsync();
             Ensure(sampleIngredienteReadAll.Count > 0, "Ingrediente read all returns generated data.");
             await ingredienteService.ModifyAsync(sampleIngrediente.Id, "Sample Ingrediente Nombre", TipoIngrediente.ninguno, 7, 7.5f, 7.5f, 7.5f, 7.5f, new List<Alergenos> { Alergenos.ninguno }, new List<DietaEspecial> { DietaEspecial.ninguna });
-            Ensure(await ingredienteService.ReadOIDAsync(sampleIngrediente.Id) is not null, "Ingrediente modify keeps the entity readable.");
+            Ensure(await ingredienteService.ReadOIDIngredienteDefaultAsync(sampleIngrediente.Id) is not null, "Ingrediente modify keeps the entity readable.");
 
-            var recetaService = new RecetaService(unitOfWorkFactory);
+            var usuarioService = new UsuarioService(unitOfWork);
+            var sampleUsuario = await usuarioService.NewAsync("Sample Usuario Name", "Password123!", true, DietaEspecial.ninguna, new Nevera(), new ListaCompra());
+            var sampleUsuarioLoginToken = await usuarioService.LoginAsync(sampleUsuario.Id, "Password123!");
+            Ensure(!string.IsNullOrWhiteSpace(sampleUsuarioLoginToken), "Usuario.login returns a login token for sampleUsuario.");
+            var sampleNevera = sampleUsuario.Nevera;
+            var sampleListaCompra = sampleUsuario.ListaCompra;
+            Ensure(sampleUsuario.Nevera?.Equals(sampleNevera) == true, "Usuario.new relates sampleUsuario and sampleNevera.");
+            Ensure(sampleUsuario.ListaCompra?.Equals(sampleListaCompra) == true, "Usuario.new relates sampleUsuario and sampleListaCompra.");
+            Ensure(sampleNevera.Usuario?.Equals(sampleUsuario) == true, "Usuario.new relates sampleNevera and sampleUsuario.");
+            Ensure(sampleListaCompra.Usuario?.Equals(sampleUsuario) == true, "Usuario.new relates sampleListaCompra and sampleUsuario.");
+            var sampleUsuarioReadBack = await usuarioService.ReadOIDAsync(sampleUsuario.Id);
+            Ensure(sampleUsuarioReadBack is not null, "Usuario read by OID returns the generated entity.");
+            var sampleUsuarioReadAll = await usuarioService.ReadAllAsync();
+            Ensure(sampleUsuarioReadAll.Count > 0, "Usuario read all returns generated data.");
+            await usuarioService.ModifyAsync(sampleUsuario.Id, "Sample Usuario Name", "Password123!", true, DietaEspecial.ninguna, default!, default!);
+            Ensure(await usuarioService.ReadOIDUsuarioDefaultAsync(sampleUsuario.Id) is not null, "Usuario modify keeps the entity readable.");
+
+            var chefService = new ChefService(unitOfWork);
+            var sampleChef = await chefService.NewAsync("Sample Chef Name", "Password123!", true, DietaEspecial.ninguna, new Nevera(), new ListaCompra());
+            Ensure(!sampleChef.Nevera.Equals(sampleNevera), "Chef.new creates its own Nevera.");
+            Ensure(!sampleChef.ListaCompra.Equals(sampleListaCompra), "Chef.new creates its own ListaCompra.");
+            Ensure(sampleChef.Nevera.Usuario?.Equals(sampleChef) == true, "Chef.new relates sampleChef.Nevera and sampleChef.");
+            Ensure(sampleChef.ListaCompra.Usuario?.Equals(sampleChef) == true, "Chef.new relates sampleChef.ListaCompra and sampleChef.");
+            var sampleChefReadBack = await chefService.ReadOIDAsync(sampleChef.Id);
+            Ensure(sampleChefReadBack is not null, "Chef read by OID returns the generated entity.");
+            var sampleChefReadAll = await chefService.ReadAllAsync();
+            Ensure(sampleChefReadAll.Count > 0, "Chef read all returns generated data.");
+            await chefService.ModifyAsync(sampleChef.Id, "Sample Chef Name", "Password123!", true, DietaEspecial.ninguna);
+            Ensure(await chefService.ReadOIDChefDefaultAsync(sampleChef.Id) is not null, "Chef modify keeps the entity readable.");
+
+            var recetaService = new RecetaService(unitOfWork);
             var sampleReceta = await recetaService.NewAsync("Sample Receta Nombre", "Sample Receta Descripcion", DietaEspecial.ninguna, 5.5f, 5, 5, sampleChef.Id, new List<LineaReceta> { new LineaReceta { CantidadNecesaria = 6, IngredienteCatalogo = sampleIngrediente } });
             var sampleLineaReceta = sampleReceta.Lineas.First();
             Ensure(sampleReceta.Chef?.Equals(sampleChef) == true, "Receta.new relates sampleReceta and sampleChef.");
@@ -194,32 +214,9 @@ public sealed class ModelGeneratedTests
             var sampleRecetaRecetasPorNeveraResult = await recetaService.RecetasPorNeveraAsync(sampleNevera.Id);
             Ensure(sampleRecetaRecetasPorNeveraResult is not null, "Receta.recetasPorNevera filter executes.");
             await recetaService.ModifyAsync(sampleReceta.Id, "Sample Receta Nombre", "Sample Receta Descripcion", DietaEspecial.ninguna, 5.5f, 5, 5, sampleChef.Id);
-            Ensure(await recetaService.ReadOIDAsync(sampleReceta.Id) is not null, "Receta modify keeps the entity readable.");
+            Ensure(await recetaService.ReadOIDRecetaDefaultAsync(sampleReceta.Id) is not null, "Receta modify keeps the entity readable.");
 
-            var pasoService = new PasoService(unitOfWorkFactory);
-            var samplePaso = await pasoService.NewAsync("Sample Paso Nombre", "Sample Paso Descripcion", sampleReceta.Id);
-            Ensure(samplePaso.Receta?.Equals(sampleReceta) == true, "Paso.new relates samplePaso and sampleReceta.");
-            var samplePasoReadBack = await pasoService.ReadOIDAsync(samplePaso.Id);
-            Ensure(samplePasoReadBack is not null, "Paso read by OID returns the generated entity.");
-            var samplePasoReadAll = await pasoService.ReadAllAsync();
-            Ensure(samplePasoReadAll.Count > 0, "Paso read all returns generated data.");
-            await pasoService.ModifyAsync(samplePaso.Id, "Sample Paso Nombre", "Sample Paso Descripcion");
-            Ensure(await pasoService.ReadOIDAsync(samplePaso.Id) is not null, "Paso modify keeps the entity readable.");
-
-            var usuarioService = new UsuarioService(unitOfWorkFactory);
-            var sampleUsuario = await usuarioService.NewAsync("Sample Usuario Name", "Password123!", true, DietaEspecial.ninguna, sampleNevera, sampleListaCompra);
-            var sampleUsuarioLoginToken = await usuarioService.LoginAsync(sampleUsuario.Id, "Password123!");
-            Ensure(!string.IsNullOrWhiteSpace(sampleUsuarioLoginToken), "Usuario.login returns a login token for sampleUsuario.");
-            Ensure(sampleUsuario.Nevera?.Equals(sampleNevera) == true, "Usuario.new relates sampleUsuario and sampleNevera.");
-            Ensure(sampleUsuario.ListaCompra?.Equals(sampleListaCompra) == true, "Usuario.new relates sampleUsuario and sampleListaCompra.");
-            var sampleUsuarioReadBack = await usuarioService.ReadOIDAsync(sampleUsuario.Id);
-            Ensure(sampleUsuarioReadBack is not null, "Usuario read by OID returns the generated entity.");
-            var sampleUsuarioReadAll = await usuarioService.ReadAllAsync();
-            Ensure(sampleUsuarioReadAll.Count > 0, "Usuario read all returns generated data.");
-            await usuarioService.ModifyAsync(sampleUsuario.Id, "Sample Usuario Name", "Password123!", true, DietaEspecial.ninguna, default!, default!);
-            Ensure(await usuarioService.ReadOIDAsync(sampleUsuario.Id) is not null, "Usuario modify keeps the entity readable.");
-
-            var ingredienteCompraService = new IngredienteCompraService(unitOfWorkFactory);
+            var ingredienteCompraService = new IngredienteCompraService(unitOfWork);
             var sampleIngredienteCompra = await ingredienteCompraService.NewAsync(8, new DateTime(2026, 1, 8), true, sampleNevera.Id, sampleListaCompra.Id, sampleIngrediente.Id);
             Ensure(sampleIngredienteCompra.Nevera?.Equals(sampleNevera) == true, "IngredienteCompra.new relates sampleIngredienteCompra and sampleNevera.");
             Ensure(sampleIngredienteCompra.ListaCompra?.Equals(sampleListaCompra) == true, "IngredienteCompra.new relates sampleIngredienteCompra and sampleListaCompra.");
@@ -229,9 +226,9 @@ public sealed class ModelGeneratedTests
             var sampleIngredienteCompraReadAll = await ingredienteCompraService.ReadAllAsync();
             Ensure(sampleIngredienteCompraReadAll.Count > 0, "IngredienteCompra read all returns generated data.");
             await ingredienteCompraService.ModifyAsync(sampleIngredienteCompra.Id, 8, new DateTime(2026, 1, 8), true, sampleNevera.Id, sampleListaCompra.Id, sampleIngrediente.Id);
-            Ensure(await ingredienteCompraService.ReadOIDAsync(sampleIngredienteCompra.Id) is not null, "IngredienteCompra modify keeps the entity readable.");
+            Ensure(await ingredienteCompraService.ReadOIDIngredienteCompraDefaultAsync(sampleIngredienteCompra.Id) is not null, "IngredienteCompra modify keeps the entity readable.");
 
-            var ingredienteNeveraService = new IngredienteNeveraService(unitOfWorkFactory);
+            var ingredienteNeveraService = new IngredienteNeveraService(unitOfWork);
             var sampleIngredienteNevera = await ingredienteNeveraService.NewAsync(9, new DateTime(2026, 1, 9), sampleIngrediente.Id, sampleNevera.Id, sampleReceta.Id);
             Ensure(sampleIngredienteNevera.IngredienteCatalogo?.Equals(sampleIngrediente) == true, "IngredienteNevera.new relates sampleIngredienteNevera and sampleIngrediente.");
             Ensure(sampleIngredienteNevera.Nevera?.Equals(sampleNevera) == true, "IngredienteNevera.new relates sampleIngredienteNevera and sampleNevera.");
@@ -243,9 +240,9 @@ public sealed class ModelGeneratedTests
             var sampleIngredienteNeveraFiltrarNeveraResult = await ingredienteNeveraService.FiltrarNeveraAsync(sampleNevera.Id, TipoIngrediente.ninguno, new DateTime(2026, 1, 9), new DateTime(2026, 1, 9), EstadoCaducidad.ninguno);
             Ensure(sampleIngredienteNeveraFiltrarNeveraResult is not null, "IngredienteNevera.filtrarNevera filter executes.");
             await ingredienteNeveraService.ModifyAsync(sampleIngredienteNevera.Id, 9, new DateTime(2026, 1, 9));
-            Ensure(await ingredienteNeveraService.ReadOIDAsync(sampleIngredienteNevera.Id) is not null, "IngredienteNevera modify keeps the entity readable.");
+            Ensure(await ingredienteNeveraService.ReadOIDIngredienteNeveraDefaultAsync(sampleIngredienteNevera.Id) is not null, "IngredienteNevera modify keeps the entity readable.");
 
-            var comentarioService = new ComentarioService(unitOfWorkFactory);
+            var comentarioService = new ComentarioService(unitOfWork);
             var sampleComentario = await comentarioService.NewAsync(10, "Sample Comentario Titulo", 10, sampleUsuario.Id, sampleReceta.Id);
             Ensure(sampleComentario.Comentador?.Equals(sampleUsuario) == true, "Comentario.new relates sampleComentario and sampleUsuario.");
             Ensure(sampleComentario.Receta?.Equals(sampleReceta) == true, "Comentario.new relates sampleComentario and sampleReceta.");
@@ -254,44 +251,88 @@ public sealed class ModelGeneratedTests
             var sampleComentarioReadAll = await comentarioService.ReadAllAsync();
             Ensure(sampleComentarioReadAll.Count > 0, "Comentario read all returns generated data.");
             await comentarioService.ModifyAsync(sampleComentario.Id, 10, "Sample Comentario Titulo", 10);
-            Ensure(await comentarioService.ReadOIDAsync(sampleComentario.Id) is not null, "Comentario modify keeps the entity readable.");
+            Ensure(await comentarioService.ReadOIDComentarioDefaultAsync(sampleComentario.Id) is not null, "Comentario modify keeps the entity readable.");
 
-            await pasoService.DestroyAsync(samplePaso.Id);
+            var pasoService = new PasoService(unitOfWork);
+            var samplePaso = await pasoService.NewAsync("Sample Paso Nombre", "Sample Paso Descripcion", sampleReceta.Id);
+            Ensure(samplePaso.Receta?.Equals(sampleReceta) == true, "Paso.new relates samplePaso and sampleReceta.");
+            var samplePasoReadBack = await pasoService.ReadOIDAsync(samplePaso.Id);
+            Ensure(samplePasoReadBack is not null, "Paso read by OID returns the generated entity.");
+            var samplePasoReadAll = await pasoService.ReadAllAsync();
+            Ensure(samplePasoReadAll.Count > 0, "Paso read all returns generated data.");
+            await pasoService.ModifyAsync(samplePaso.Id, "Sample Paso Nombre", "Sample Paso Descripcion");
+            Ensure(await pasoService.ReadOIDPasoDefaultAsync(samplePaso.Id) is not null, "Paso modify keeps the entity readable.");
+
             await ingredienteCompraService.DestroyAsync(sampleIngredienteCompra.Id);
             await ingredienteNeveraService.DestroyAsync(sampleIngredienteNevera.Id);
             await comentarioService.DestroyAsync(sampleComentario.Id);
+            await pasoService.DestroyAsync(samplePaso.Id);
             await recetaService.DestroyAsync(sampleReceta.Id);
+            await ingredienteService.DestroyAsync(sampleIngrediente.Id);
             await chefService.DestroyAsync(sampleChef.Id);
             await usuarioService.DestroyAsync(sampleUsuario.Id);
-            await ingredienteService.DestroyAsync(sampleIngrediente.Id);
 
-            Ensure((await chefService.ReadAllAsync()).Count == 0, "Chef seed cleanup completed.");
-            Ensure((await ingredienteService.ReadAllAsync()).Count == 0, "Ingrediente seed cleanup completed.");
-            Ensure((await recetaService.ReadAllAsync()).Count == 0, "Receta seed cleanup completed.");
-            Ensure((await pasoService.ReadAllAsync()).Count == 0, "Paso seed cleanup completed.");
-            Ensure((await usuarioService.ReadAllAsync()).Count == 0, "Usuario seed cleanup completed.");
-            Ensure((await ingredienteCompraService.ReadAllAsync()).Count == 0, "IngredienteCompra seed cleanup completed.");
-            Ensure((await ingredienteNeveraService.ReadAllAsync()).Count == 0, "IngredienteNevera seed cleanup completed.");
-            Ensure((await comentarioService.ReadAllAsync()).Count == 0, "Comentario seed cleanup completed.");
+            Ensure(await ingredienteService.ReadOIDIngredienteDefaultAsync(sampleIngrediente.Id) is null, "Ingrediente seed cleanup completed.");
+            Ensure(await usuarioService.ReadOIDUsuarioDefaultAsync(sampleUsuario.Id) is null, "Usuario seed cleanup completed.");
+            Ensure(await chefService.ReadOIDChefDefaultAsync(sampleChef.Id) is null, "Chef seed cleanup completed.");
+            Ensure(await recetaService.ReadOIDRecetaDefaultAsync(sampleReceta.Id) is null, "Receta seed cleanup completed.");
+            Ensure(await ingredienteCompraService.ReadOIDIngredienteCompraDefaultAsync(sampleIngredienteCompra.Id) is null, "IngredienteCompra seed cleanup completed.");
+            Ensure(await ingredienteNeveraService.ReadOIDIngredienteNeveraDefaultAsync(sampleIngredienteNevera.Id) is null, "IngredienteNevera seed cleanup completed.");
+            Ensure(await comentarioService.ReadOIDComentarioDefaultAsync(sampleComentario.Id) is null, "Comentario seed cleanup completed.");
+            Ensure(await pasoService.ReadOIDPasoDefaultAsync(samplePaso.Id) is null, "Paso seed cleanup completed.");
     }
 
-    private static Configuration CreateNHibernateConfiguration()
+    private static DbContextOptions<EdibleDbContext> CreateDbContextOptions()
     {
-        var configuration = new Configuration();
-        var configPath = Path.Combine(AppContext.BaseDirectory, "hibernate.cfg.xml");
-        if (File.Exists(configPath))
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        var connectionString = configuration.GetConnectionString("DbConnection")
+            ?? throw new InvalidOperationException("No database connection string found for generated database tests. Configure ConnectionStrings:DbConnection or provide InitializeDB/appsettings.json.");
+        connectionString = ResolveSqliteConnectionString(connectionString);
+
+        return new DbContextOptionsBuilder<EdibleDbContext>()
+            .UseSqlite(connectionString)
+            .Options;
+    }
+
+    private static string ResolveSqliteConnectionString(string connectionString)
+    {
+        var connectionStringBuilder = new SqliteConnectionStringBuilder(connectionString);
+        if (!string.IsNullOrWhiteSpace(connectionStringBuilder.DataSource) &&
+            !Path.IsPathRooted(connectionStringBuilder.DataSource) &&
+            !string.Equals(connectionStringBuilder.DataSource, ":memory:", StringComparison.OrdinalIgnoreCase) &&
+            !connectionStringBuilder.DataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
         {
-            configuration.Configure(configPath);
-        }
-        else
-        {
-            configuration.Configure();
+            connectionStringBuilder.DataSource = Path.GetFullPath(Path.Combine(GetInitializeDbDirectory(), connectionStringBuilder.DataSource));
         }
 
-        configuration.SetProperty(NHibernate.Cfg.Environment.ShowSql, "false");
-        configuration.AddAssembly(typeof(UnitOfWorkFactory).Assembly);
-        configuration.EnableSqlStatementCapture();
-        return configuration;
+        return connectionStringBuilder.ConnectionString;
+    }
+
+    private static string GetInitializeDbDirectory()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "InitializeDB.csproj")))
+            {
+                return directory.FullName;
+            }
+
+            var candidate = Path.Combine(directory.FullName, "InitializeDB");
+            if (File.Exists(Path.Combine(candidate, "InitializeDB.csproj")))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return AppContext.BaseDirectory;
     }
 
     private const string SuccessColor = "\u001b[32m";

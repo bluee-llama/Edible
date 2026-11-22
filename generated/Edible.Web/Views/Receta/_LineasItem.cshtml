@@ -1,0 +1,15 @@
+@* HARIA-WEB GENERATED sha256:812bc18953dace258e9a8e0d05d0b6a191c25e665e9b2ab04e61abc8123ee689 *@
+@model Edible.Web.ViewModels.LineaRecetaViewModel
+    <input asp-for="Id" type="hidden" />
+    <span asp-validation-for="Id" class="text-danger"></span>
+        <div class="mb-3">
+            <label asp-for="CantidadNecesaria" class="form-label"></label>
+            <input asp-for="CantidadNecesaria" class="form-control" />
+            <span asp-validation-for="CantidadNecesaria" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="IngredienteCatalogoId" class="form-label"></label>
+            <select asp-for="IngredienteCatalogoId" asp-items="Model.IngredienteCatalogoOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="IngredienteCatalogoId" class="text-danger"></span>
+        </div>
+

@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using NHibernate;
-using NHibernate.Linq;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Exceptions;
 
 namespace Edible.Infrastructure.Repositories;
@@ -16,13 +16,8 @@ public sealed class ListaCompraRepository : RepositoryBase<ListaCompra>, IListaC
     {
     }
 
-    public ListaCompraRepository(ISession session, ILogger<ListaCompraRepository>? logger = null)
-        : base(session, logger)
-    {
-    }
-
-    public ListaCompraRepository(ISessionFactory sessionFactory, ILogger<ListaCompraRepository>? logger = null)
-        : base(sessionFactory, logger)
+    public ListaCompraRepository(EdibleDbContext dbContext, ILogger<ListaCompraRepository>? logger = null)
+        : base(dbContext, logger)
     {
     }
 
@@ -30,8 +25,7 @@ public sealed class ListaCompraRepository : RepositoryBase<ListaCompra>, IListaC
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.Query<ListaCompra>().ToListAsync();
+            return await DbContext.Set<ListaCompra>().Include(entity => entity.Usuario).Include(entity => entity.IngredienteEnLaLista).Include("IngredienteEnLaLista.Nevera").Include("IngredienteEnLaLista.IngredienteCatalogo").ToListAsync();
         }
         catch (Exception ex)
         {
@@ -44,8 +38,12 @@ public sealed class ListaCompraRepository : RepositoryBase<ListaCompra>, IListaC
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.GetAsync<ListaCompra>(id);
+            var entity = await DbContext.Set<ListaCompra>().FindAsync([id]);
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.Usuario).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Collection(item => item.IngredienteEnLaLista).LoadAsync();
+                if (entity is not null) foreach (var child in entity.IngredienteEnLaLista) await DbContext.Entry(child).Reference(item => item.Nevera).LoadAsync();
+                if (entity is not null) foreach (var child in entity.IngredienteEnLaLista) await DbContext.Entry(child).Reference(item => item.IngredienteCatalogo).LoadAsync();
+            return entity;
         }
         catch (Exception ex)
         {
@@ -58,7 +56,34 @@ public sealed class ListaCompraRepository : RepositoryBase<ListaCompra>, IListaC
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Save",
-            session => session.SaveOrUpdateAsync(entity),
+            async dbContext =>
+            {
+                var set = dbContext.Set<ListaCompra>();
+                var entry = dbContext.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    if (HasDefaultKey(entity))
+                    {
+                        set.Add(entity);
+                    }
+                    else
+                    {
+                        var exists = await EntityExistsAsync(set, entity);
+                        if (exists)
+                        {
+                            set.Update(entity);
+                        }
+                        else
+                        {
+                            set.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    set.Update(entity);
+                }
+            },
             $"Error saving {EntityName} entity.");
     }
 
@@ -66,9 +91,18 @@ public sealed class ListaCompraRepository : RepositoryBase<ListaCompra>, IListaC
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Delete",
-            session => session.DeleteAsync(entity),
+            dbContext =>
+            {
+                dbContext.Set<ListaCompra>().Remove(entity);
+                return Task.CompletedTask;
+            },
             $"Error deleting {EntityName} entity.");
     }
 
+    private static bool HasDefaultKey(ListaCompra entity) =>
+        EqualityComparer<int>.Default.Equals(entity.Id, default);
+
+    private static Task<bool> EntityExistsAsync(DbSet<ListaCompra> set, ListaCompra entity) =>
+        set.AsNoTracking().AnyAsync(existing => existing.Id == entity.Id);
 
 }

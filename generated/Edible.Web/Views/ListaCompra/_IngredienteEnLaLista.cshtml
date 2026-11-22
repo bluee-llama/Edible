@@ -1,0 +1,26 @@
+@* HARIA-WEB GENERATED sha256:a0a177cad1b382564bad5a860aecfbea286c3c17ea191fff78eeb43a3391043e *@
+@model Edible.Web.ViewModels.ListaCompraViewModel
+@{
+    var templateData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData);
+    templateData.TemplateInfo.HtmlFieldPrefix = "IngredienteEnLaLista[__index__]";
+}
+<fieldset class="mb-4" data-haria-composition data-prefix="IngredienteEnLaLista">
+    <legend>IngredienteEnLaLista</legend>
+    <span asp-validation-for="IngredienteEnLaLista" class="text-danger"></span>
+    <div data-haria-rows>
+    @for (var index = 0; index < Model.IngredienteEnLaLista.Count; index++)
+    {
+        <div class="border rounded p-3 mb-2" data-haria-row>
+            <partial name="_IngredienteEnLaListaItem" for="IngredienteEnLaLista[index]" />
+            <button type="button" class="btn btn-sm btn-outline-danger" data-haria-remove>Eliminar línea</button>
+        </div>
+    }
+    </div>
+    <template>
+        <div class="border rounded p-3 mb-2" data-haria-row>
+            <partial name="_IngredienteEnLaListaItem" model="Model.IngredienteEnLaListaTemplate" view-data="templateData" />
+            <button type="button" class="btn btn-sm btn-outline-danger" data-haria-remove>Eliminar línea</button>
+        </div>
+    </template>
+    <button type="button" class="btn btn-outline-primary" data-haria-add>Añadir línea</button>
+</fieldset>

@@ -1,0 +1,80 @@
+@* HARIA-WEB GENERATED sha256:eb6756676651a7a12af4c3a97de2129986c8d2ba89a2d04b526aa34ed54d8980 *@
+@model Edible.Web.ViewModels.IngredienteViewModel
+
+@{
+    ViewData["Title"] = "Editar";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Editar</span>
+                <h1 class="h3 mb-1">Ingrediente</h1>
+                <p class="text-body-secondary mb-0">Completa los campos y guarda los cambios.</p>
+            </div>
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <div class="card-body p-4">
+                    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+                    <input type="hidden" asp-for="Id" />
+        <div class="mb-3">
+            <label asp-for="Nombre" class="form-label"></label>
+            <input asp-for="Nombre" class="form-control" />
+            <span asp-validation-for="Nombre" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Tipo" class="form-label"></label>
+            <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<Edible.Domain.Enums.TipoIngrediente>()" class="form-select"></select>
+            <span asp-validation-for="Tipo" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Calorias" class="form-label"></label>
+            <input asp-for="Calorias" class="form-control" />
+            <span asp-validation-for="Calorias" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="G_proteinas" class="form-label"></label>
+            <input asp-for="G_proteinas" type="text" inputmode="decimal" asp-format="{0:G}" data-haria-number="true" data-haria-decimal="@System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator" class="form-control" />
+            <span asp-validation-for="G_proteinas" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="G_carbohidratos" class="form-label"></label>
+            <input asp-for="G_carbohidratos" type="text" inputmode="decimal" asp-format="{0:G}" data-haria-number="true" data-haria-decimal="@System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator" class="form-control" />
+            <span asp-validation-for="G_carbohidratos" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="G_grasas" class="form-label"></label>
+            <input asp-for="G_grasas" type="text" inputmode="decimal" asp-format="{0:G}" data-haria-number="true" data-haria-decimal="@System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator" class="form-control" />
+            <span asp-validation-for="G_grasas" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="G_racion" class="form-label"></label>
+            <input asp-for="G_racion" type="text" inputmode="decimal" asp-format="{0:G}" data-haria-number="true" data-haria-decimal="@System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator" class="form-control" />
+            <span asp-validation-for="G_racion" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Alergenos" class="form-label"></label>
+            <select asp-for="Alergenos" asp-items="Html.GetEnumSelectList<Edible.Domain.Enums.Alergenos>()" multiple="multiple" class="form-select"></select>
+            <span asp-validation-for="Alergenos" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="DietaEspecial" class="form-label"></label>
+            <select asp-for="DietaEspecial" asp-items="Html.GetEnumSelectList<Edible.Domain.Enums.DietaEspecial>()" multiple="multiple" class="form-select"></select>
+            <span asp-validation-for="DietaEspecial" class="text-danger"></span>
+        </div>
+                </div>
+                <div class="card-footer bg-body p-4 d-flex flex-column flex-sm-row gap-2">
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/haria-numbers.js" asp-append-version="true"></script>
+
+}

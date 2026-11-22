@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using NHibernate;
-using NHibernate.Linq;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Exceptions;
 
 namespace Edible.Infrastructure.Repositories;
@@ -16,13 +16,8 @@ public sealed class ChefRepository : RepositoryBase<Chef>, IChefRepository
     {
     }
 
-    public ChefRepository(ISession session, ILogger<ChefRepository>? logger = null)
-        : base(session, logger)
-    {
-    }
-
-    public ChefRepository(ISessionFactory sessionFactory, ILogger<ChefRepository>? logger = null)
-        : base(sessionFactory, logger)
+    public ChefRepository(EdibleDbContext dbContext, ILogger<ChefRepository>? logger = null)
+        : base(dbContext, logger)
     {
     }
 
@@ -30,8 +25,7 @@ public sealed class ChefRepository : RepositoryBase<Chef>, IChefRepository
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.Query<Chef>().ToListAsync();
+            return await DbContext.Set<Chef>().Include(entity => entity.Nevera).Include(entity => entity.ListaCompra).ToListAsync();
         }
         catch (Exception ex)
         {
@@ -44,8 +38,10 @@ public sealed class ChefRepository : RepositoryBase<Chef>, IChefRepository
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.GetAsync<Chef>(id);
+            var entity = await DbContext.Set<Chef>().FindAsync([id]);
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.Nevera).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.ListaCompra).LoadAsync();
+            return entity;
         }
         catch (Exception ex)
         {
@@ -58,7 +54,34 @@ public sealed class ChefRepository : RepositoryBase<Chef>, IChefRepository
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Save",
-            session => session.SaveOrUpdateAsync(entity),
+            async dbContext =>
+            {
+                var set = dbContext.Set<Chef>();
+                var entry = dbContext.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    if (HasDefaultKey(entity))
+                    {
+                        set.Add(entity);
+                    }
+                    else
+                    {
+                        var exists = await EntityExistsAsync(set, entity);
+                        if (exists)
+                        {
+                            set.Update(entity);
+                        }
+                        else
+                        {
+                            set.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    set.Update(entity);
+                }
+            },
             $"Error saving {EntityName} entity.");
     }
 
@@ -66,9 +89,17 @@ public sealed class ChefRepository : RepositoryBase<Chef>, IChefRepository
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Delete",
-            session => session.DeleteAsync(entity),
+            dbContext =>
+            {
+                dbContext.Set<Chef>().Remove(entity);
+                return Task.CompletedTask;
+            },
             $"Error deleting {EntityName} entity.");
     }
 
+    private static bool HasDefaultKey(Chef entity) => false;
+
+    private static Task<bool> EntityExistsAsync(DbSet<Chef> set, Chef entity) =>
+        Task.FromResult(true);
 
 }

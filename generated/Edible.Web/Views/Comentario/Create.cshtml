@@ -1,0 +1,64 @@
+@* HARIA-WEB GENERATED sha256:352e0b9141ce968cd2f79d132542195bfc46f72e2a05314399685a6fbb64d34a *@
+@model Edible.Web.ViewModels.ComentarioViewModel
+
+@{
+    ViewData["Title"] = "Crear";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Crear</span>
+                <h1 class="h3 mb-1">Comentario</h1>
+                <p class="text-body-secondary mb-0">Completa los campos y guarda los cambios.</p>
+            </div>
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="card-body p-4">
+                    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+        <div class="mb-3">
+            <label asp-for="User_id" class="form-label"></label>
+            <input asp-for="User_id" class="form-control" />
+            <span asp-validation-for="User_id" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ImagenUpload" class="form-label"></label>
+            <input asp-for="ImagenUpload" type="file" accept=".png,image/png,.jpg,image/jpeg,.jpeg" class="form-control" />
+            <span asp-validation-for="ImagenUpload" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Titulo" class="form-label"></label>
+            <input asp-for="Titulo" class="form-control" />
+            <span asp-validation-for="Titulo" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Valoracion" class="form-label"></label>
+            <input asp-for="Valoracion" class="form-control" />
+            <span asp-validation-for="Valoracion" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ComentadorId" class="form-label"></label>
+            <select asp-for="ComentadorId" asp-items="Model.ComentadorOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="ComentadorId" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="RecetaId" class="form-label"></label>
+            <select asp-for="RecetaId" asp-items="Model.RecetaOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="RecetaId" class="text-danger"></span>
+        </div>
+                </div>
+                <div class="card-footer bg-body p-4 d-flex flex-column flex-sm-row gap-2">
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+
+}

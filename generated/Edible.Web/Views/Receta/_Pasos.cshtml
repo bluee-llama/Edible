@@ -1,0 +1,26 @@
+@* HARIA-WEB GENERATED sha256:5ca4e04a49ede543b4081d35618935ac3177f1d0fdb57f286a412f9358d115f0 *@
+@model Edible.Web.ViewModels.RecetaViewModel
+@{
+    var templateData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData);
+    templateData.TemplateInfo.HtmlFieldPrefix = "Pasos[__index__]";
+}
+<fieldset class="mb-4" data-haria-composition data-prefix="Pasos">
+    <legend>Pasos</legend>
+    <span asp-validation-for="Pasos" class="text-danger"></span>
+    <div data-haria-rows>
+    @for (var index = 0; index < Model.Pasos.Count; index++)
+    {
+        <div class="border rounded p-3 mb-2" data-haria-row>
+            <partial name="_PasosItem" for="Pasos[index]" />
+            <button type="button" class="btn btn-sm btn-outline-danger" data-haria-remove>Eliminar línea</button>
+        </div>
+    }
+    </div>
+    <template>
+        <div class="border rounded p-3 mb-2" data-haria-row>
+            <partial name="_PasosItem" model="Model.PasosTemplate" view-data="templateData" />
+            <button type="button" class="btn btn-sm btn-outline-danger" data-haria-remove>Eliminar línea</button>
+        </div>
+    </template>
+    <button type="button" class="btn btn-outline-primary" data-haria-add>Añadir línea</button>
+</fieldset>

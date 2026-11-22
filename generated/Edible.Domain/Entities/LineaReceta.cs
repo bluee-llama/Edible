@@ -5,10 +5,10 @@ namespace Edible.Domain.Entities;
 
 public partial class LineaReceta
 {
-    public virtual int Id { get; set; }
-    public virtual int CantidadNecesaria { get; set; }
-    public virtual Receta Receta { get; set; } = null!;
-    public virtual Ingrediente IngredienteCatalogo { get; set; } = null!;
+    public int Id { get; set; }
+    public int CantidadNecesaria { get; set; }
+    public Receta Receta { get; set; } = null!;
+    public Ingrediente IngredienteCatalogo { get; set; } = null!;
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

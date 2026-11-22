@@ -5,10 +5,10 @@ namespace Edible.Domain.Entities;
 
 public partial class Paso
 {
-    public virtual int Id { get; set; }
-    public virtual string Nombre { get; set; } = string.Empty;
-    public virtual string Descripcion { get; set; } = string.Empty;
-    public virtual Receta Receta { get; set; } = null!;
+    public int Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
+    public Receta Receta { get; set; } = null!;
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

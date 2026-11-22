@@ -1,10 +1,11 @@
 ﻿using Edible.Application.Abstractions;
 using Edible.Application.Exceptions;
 using Edible.Domain.Entities;
+using Edible.Domain.Enums;
 
-/*PROTECTED REGION ID(usingEdible.Application.Services_Usuario_ponerPublico) ENABLED START*/
-// references to other libraries
-/*PROTECTED REGION END*/
+        /*PROTECTED REGION ID(usingEdible.Application.Services_Usuario_ponerPublico) ENABLED START*/
+        // references to other libraries
+        /*PROTECTED REGION END*/
 
 namespace Edible.Application.Services;
 
@@ -13,11 +14,9 @@ public sealed partial class UsuarioService
     public async Task PonerPublicoAsync(int p_oid)
     {
         /*PROTECTED REGION ID(Edible.Application.Services_Usuario_ponerPublico) ENABLED START*/
-        var entity = await _repository.ReadAsync(p_oid)
-            ?? throw new ModelException("El usuario no existe.");
+        // Write here your custom code...
 
-        // Se persiste la lectura transaccional respetando los atributos del modelo TDM oficial.
-        await _repository.SaveAsync(entity);
+        throw new ModelException("Application service generation for Usuario.ponerPublico is pending.", new NotImplementedException("Method PonerPublicoAsync() not yet implemented."));
         /*PROTECTED REGION END*/
     }
 }

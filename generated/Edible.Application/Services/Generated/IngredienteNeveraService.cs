@@ -41,6 +41,19 @@ public sealed partial class IngredienteNeveraService : ServiceEntity<Ingrediente
     public Task<IngredienteNevera> ModifierIngredienteNeveraDefaultAsync(IngredienteNevera entity) =>
         ModifierDefaultAsync(entity);
 
+    public async Task ApplyIngredienteNeveraRelationsAsync(IngredienteNevera entity, int? p_ingredienteCatalogo_id, int? p_nevera_id, int? p_receta_id)
+    {
+        if (p_ingredienteCatalogo_id is null) throw new ModelException("IngredienteNevera.IngredienteCatalogo is required.");
+        entity.IngredienteCatalogo = p_ingredienteCatalogo_id is int selectedIngredienteCatalogo
+            ? await _unitOfWork.IngredienteRepository.ReadAsync(selectedIngredienteCatalogo) ?? throw new ModelException("Ingrediente not found for IngredienteNevera.IngredienteCatalogo.") : null!;
+        if (p_nevera_id is null) throw new ModelException("IngredienteNevera.Nevera is required.");
+        entity.Nevera = p_nevera_id is int selectedNevera
+            ? await _unitOfWork.NeveraRepository.ReadAsync(selectedNevera) ?? throw new ModelException("Nevera not found for IngredienteNevera.Nevera.") : null!;
+        if (p_receta_id is null) throw new ModelException("IngredienteNevera.Receta is required.");
+        entity.Receta = p_receta_id is int selectedReceta
+            ? await _unitOfWork.RecetaRepository.ReadAsync(selectedReceta) ?? throw new ModelException("Receta not found for IngredienteNevera.Receta.") : null!;
+    }
+
     public async Task<IngredienteNevera> NewAsync(int p_cantidad, DateTime p_fechaCaducidad, int p_ingredienteCatalogo_oid, int p_nevera_oid, int p_receta_oid)
     {
         Ingrediente ingredienteCatalogoEntity = await _unitOfWork.IngredienteRepository.ReadAsync(p_ingredienteCatalogo_oid)

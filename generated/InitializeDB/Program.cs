@@ -1,9 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using NHibernate.Cfg;
-using NHibernate.Tool.hbm2ddl;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Logging;
-using Edible.Infrastructure.Repositories;
 
 namespace InitializeDB;
 
@@ -12,37 +12,37 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         Console.WriteLine("-----------------------------------------------------------------------------");
-        Console.WriteLine("A database called: EdibleNHibernate will be created if it does not exist.");
+        Console.WriteLine("A new database called: EdibleEntityFramework will be created (the previous information will be deleted).");
         Console.WriteLine("-----------------------------------------------------------------------------");
 
         try
         {
-            var configuration = BuildConfiguration();
-            using var loggerFactory = CreateLoggerFactory(configuration);
-            var cfg = new Configuration();
+            var config = BuildConfiguration();
+            using var loggerFactory = CreateLoggerFactory(config);
+            var databaseName = config["Database:Name"] ?? "EdibleEntityFramework";
 
-            /*PROTECTED REGION ID(initializeDatabase) START*/
-            var cs = CreateDB.Create();
+            var cs = config.GetConnectionString("DbConnection")
+                ?? throw new InvalidOperationException("No application connection string provided.");
+            cs = ResolveSqliteConnectionString(cs);
 
-            cfg.Configure(Path.Combine(AppContext.BaseDirectory, "hibernate.cfg.xml"));
-            cfg.SetProperty(NHibernate.Cfg.Environment.ConnectionString, cs);
-            cfg.AddAssembly(typeof(UsuarioRepository).Assembly);
-            cfg.EnableSqlStatementCapture();
+            var options = new DbContextOptionsBuilder<EdibleDbContext>()
+            .UseSqlite(cs)
+                .UseLoggerFactory(loggerFactory)
+                .Options;
 
-            new SchemaExport(cfg).Execute(true, true, false);
+            Console.WriteLine($"Target database: {databaseName}");
+            await CreateDB.RecreateDatabaseAsync(options);
+            await CreateDB.CreateSchemaAsync(options);
+
             Console.WriteLine("-------------------------------------");
             Console.WriteLine("Database schema created successfully");
             Console.WriteLine("-------------------------------------");
-            /*PROTECTED REGION END*/
 
             Console.WriteLine("-------------------------------------------------------");
             Console.WriteLine("Let's initialize the data of your database!");
             Console.WriteLine("-------------------------------------------------------");
 
-            /*PROTECTED REGION ID(seedData) START*/
-            await SeedData.InitializeDataAsync(cfg, loggerFactory);
-            await SeedData.InitializeDataManualAsync(cfg, loggerFactory);
-            /*PROTECTED REGION END*/
+            await SeedData.InitializeDataAsync(options, loggerFactory);
             Console.WriteLine("-----------------------------------------");
             Console.WriteLine("The data has been inserted successfully!!");
             Console.WriteLine("-----------------------------------------");
@@ -53,12 +53,25 @@ internal static class Program
         }
     }
 
+    private static string ResolveSqliteConnectionString(string connectionString)
+    {
+        var builder = new SqliteConnectionStringBuilder(connectionString);
+        if (!string.IsNullOrWhiteSpace(builder.DataSource) &&
+            !Path.IsPathRooted(builder.DataSource) &&
+            !string.Equals(builder.DataSource, ":memory:", StringComparison.OrdinalIgnoreCase) &&
+            !builder.DataSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.DataSource = Path.GetFullPath(Path.Combine(GetInitializeDbDirectory(), builder.DataSource));
+        }
+
+        return builder.ConnectionString;
+    }
+
     private static IConfiguration BuildConfiguration() =>
         new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{System.Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"}.json", optional: true)
-            .AddEnvironmentVariables()
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"}.json", optional: true)
             .Build();
 
     private static ILoggerFactory CreateLoggerFactory(IConfiguration configuration)
@@ -69,7 +82,7 @@ internal static class Program
 
         var configuredPath = configuration["Logging:File:Path"];
         var filePath = string.IsNullOrWhiteSpace(configuredPath)
-            ? Path.Combine(GetLogBaseDirectory(), "logs", "application.log")
+            ? Path.Combine(GetInitializeDbDirectory(), "logs", "application.log")
             : ResolveLogPath(configuredPath);
 
         return LoggerFactory.Create(builder =>
@@ -86,9 +99,9 @@ internal static class Program
     private static string ResolveLogPath(string configuredPath) =>
         Path.IsPathRooted(configuredPath)
             ? configuredPath
-            : Path.Combine(GetLogBaseDirectory(), configuredPath);
+            : Path.Combine(GetInitializeDbDirectory(), configuredPath);
 
-    private static string GetLogBaseDirectory()
+    private static string GetInitializeDbDirectory()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)

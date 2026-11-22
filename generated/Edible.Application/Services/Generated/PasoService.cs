@@ -41,6 +41,13 @@ public sealed partial class PasoService : ServiceEntity<Paso>
     public Task<Paso> ModifierPasoDefaultAsync(Paso entity) =>
         ModifierDefaultAsync(entity);
 
+    public async Task ApplyPasoRelationsAsync(Paso entity, int? p_receta_id)
+    {
+        if (p_receta_id is null) throw new ModelException("Paso.Receta is required.");
+        entity.Receta = p_receta_id is int selectedReceta
+            ? await _unitOfWork.RecetaRepository.ReadAsync(selectedReceta) ?? throw new ModelException("Receta not found for Paso.Receta.") : null!;
+    }
+
     public async Task<Paso> NewAsync(string p_nombre, string p_descripcion, int p_receta_oid)
     {
         Receta recetaEntity = await _unitOfWork.RecetaRepository.ReadAsync(p_receta_oid)

@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using NHibernate;
-using NHibernate.Linq;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Exceptions;
 
 namespace Edible.Infrastructure.Repositories;
@@ -16,13 +16,8 @@ public sealed class LineaRecetaRepository : RepositoryBase<LineaReceta>, ILineaR
     {
     }
 
-    public LineaRecetaRepository(ISession session, ILogger<LineaRecetaRepository>? logger = null)
-        : base(session, logger)
-    {
-    }
-
-    public LineaRecetaRepository(ISessionFactory sessionFactory, ILogger<LineaRecetaRepository>? logger = null)
-        : base(sessionFactory, logger)
+    public LineaRecetaRepository(EdibleDbContext dbContext, ILogger<LineaRecetaRepository>? logger = null)
+        : base(dbContext, logger)
     {
     }
 
@@ -30,8 +25,7 @@ public sealed class LineaRecetaRepository : RepositoryBase<LineaReceta>, ILineaR
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.Query<LineaReceta>().ToListAsync();
+            return await DbContext.Set<LineaReceta>().Include(entity => entity.Receta).Include(entity => entity.IngredienteCatalogo).ToListAsync();
         }
         catch (Exception ex)
         {
@@ -44,8 +38,10 @@ public sealed class LineaRecetaRepository : RepositoryBase<LineaReceta>, ILineaR
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.GetAsync<LineaReceta>(id);
+            var entity = await DbContext.Set<LineaReceta>().FindAsync([id]);
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.Receta).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.IngredienteCatalogo).LoadAsync();
+            return entity;
         }
         catch (Exception ex)
         {
@@ -58,7 +54,34 @@ public sealed class LineaRecetaRepository : RepositoryBase<LineaReceta>, ILineaR
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Save",
-            session => session.SaveOrUpdateAsync(entity),
+            async dbContext =>
+            {
+                var set = dbContext.Set<LineaReceta>();
+                var entry = dbContext.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    if (HasDefaultKey(entity))
+                    {
+                        set.Add(entity);
+                    }
+                    else
+                    {
+                        var exists = await EntityExistsAsync(set, entity);
+                        if (exists)
+                        {
+                            set.Update(entity);
+                        }
+                        else
+                        {
+                            set.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    set.Update(entity);
+                }
+            },
             $"Error saving {EntityName} entity.");
     }
 
@@ -66,9 +89,18 @@ public sealed class LineaRecetaRepository : RepositoryBase<LineaReceta>, ILineaR
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Delete",
-            session => session.DeleteAsync(entity),
+            dbContext =>
+            {
+                dbContext.Set<LineaReceta>().Remove(entity);
+                return Task.CompletedTask;
+            },
             $"Error deleting {EntityName} entity.");
     }
 
+    private static bool HasDefaultKey(LineaReceta entity) =>
+        EqualityComparer<int>.Default.Equals(entity.Id, default);
+
+    private static Task<bool> EntityExistsAsync(DbSet<LineaReceta> set, LineaReceta entity) =>
+        set.AsNoTracking().AnyAsync(existing => existing.Id == entity.Id);
 
 }

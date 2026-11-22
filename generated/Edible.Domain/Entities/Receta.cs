@@ -6,19 +6,19 @@ namespace Edible.Domain.Entities;
 
 public partial class Receta
 {
-    public virtual int Id { get; set; }
-    public virtual string Nombre { get; set; } = string.Empty;
-    public virtual string Descripcion { get; set; } = string.Empty;
-    public virtual DietaEspecial DietaEspecial { get; set; }
-    public virtual float ValoracionMedia { get; set; }
-    public virtual int TiempoRealizacion { get; set; }
-    public virtual int Dificultad { get; set; }
-    public virtual Chef Chef { get; set; } = null!;
-    public virtual IList<Paso> Pasos { get; set; } = new List<Paso>();
-    public virtual IList<LineaReceta> Lineas { get; set; } = new List<LineaReceta>();
-    public virtual IList<Comentario> Comentarios { get; set; } = new List<Comentario>();
-    public virtual IList<IngredienteNevera> IngredientesDisponibles { get; set; } = new List<IngredienteNevera>();
-    public virtual IList<Usuario> UsuariosSugeridos { get; set; } = new List<Usuario>();
+    public int Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
+    public DietaEspecial DietaEspecial { get; set; }
+    public float ValoracionMedia { get; set; }
+    public int TiempoRealizacion { get; set; }
+    public int Dificultad { get; set; }
+    public Chef Chef { get; set; } = null!;
+    public IList<Paso> Pasos { get; set; } = new List<Paso>();
+    public IList<LineaReceta> Lineas { get; set; } = new List<LineaReceta>();
+    public IList<Comentario> Comentarios { get; set; } = new List<Comentario>();
+    public IList<IngredienteNevera> IngredientesDisponibles { get; set; } = new List<IngredienteNevera>();
+    public IList<Usuario> UsuariosSugeridos { get; set; } = new List<Usuario>();
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

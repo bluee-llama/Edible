@@ -57,6 +57,16 @@ public sealed partial class ChefService : ServiceEntity<Chef>
         }
     }
 
+    public async Task ApplyChefRelationsAsync(Chef entity, int? p_nevera_id, int? p_listaCompra_id)
+    {
+        if (p_nevera_id is null) throw new ModelException("Chef.Nevera is required.");
+        entity.Nevera = p_nevera_id is int selectedNevera
+            ? await _unitOfWork.NeveraRepository.ReadAsync(selectedNevera) ?? throw new ModelException("Nevera not found for Chef.Nevera.") : null!;
+        if (p_listaCompra_id is null) throw new ModelException("Chef.ListaCompra is required.");
+        entity.ListaCompra = p_listaCompra_id is int selectedListaCompra
+            ? await _unitOfWork.ListaCompraRepository.ReadAsync(selectedListaCompra) ?? throw new ModelException("ListaCompra not found for Chef.ListaCompra.") : null!;
+    }
+
     public async Task<Chef> NewAsync(string p_name, string p_password, bool p_publico, DietaEspecial p_dieta, Nevera p_nevera, ListaCompra p_listaCompra)
     {
         Chef entity = new Chef

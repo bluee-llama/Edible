@@ -289,7 +289,7 @@ ConceptualModel Edible
 
     Association PasosDeReceta (Receta - Paso)
     {
-        => navigable pasos : Composite (0, *);
+        => navigable pasos : Composite(0, *) ;
         <= navigable receta (1, 1);
     };
 

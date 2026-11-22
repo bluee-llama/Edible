@@ -1,0 +1,66 @@
+@* HARIA-WEB GENERATED sha256:5d4b0cb5482ae104bb6d48ddb76c6a5504f108d32f9e8a00dd28fb5c55ec120d *@
+@model Edible.Web.ViewModels.ChefViewModel
+
+@{
+    ViewData["Title"] = "Editar";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Editar</span>
+                <h1 class="h3 mb-1">Chef</h1>
+                <p class="text-body-secondary mb-0">Completa los campos y guarda los cambios.</p>
+            </div>
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <div class="card-body p-4">
+                    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+                    <input type="hidden" asp-for="Id" />
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" type="password" value="" autocomplete="new-password" class="form-control" />
+            <span asp-validation-for="Password" class="text-danger"></span>
+            <div class="form-text">Déjalo vacío para conservar la contraseña actual.</div>
+        </div>
+        <div class="form-check mb-3">
+            <input asp-for="Publico" class="form-check-input" />
+            <label asp-for="Publico" class="form-check-label"></label>
+            <span asp-validation-for="Publico" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Dieta" class="form-label"></label>
+            <select asp-for="Dieta" asp-items="Html.GetEnumSelectList<Edible.Domain.Enums.DietaEspecial>()" class="form-select"></select>
+            <span asp-validation-for="Dieta" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="NeveraId" class="form-label"></label>
+            <select asp-for="NeveraId" asp-items="Model.NeveraOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="NeveraId" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ListaCompraId" class="form-label"></label>
+            <select asp-for="ListaCompraId" asp-items="Model.ListaCompraOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="ListaCompraId" class="text-danger"></span>
+        </div>
+                </div>
+                <div class="card-footer bg-body p-4 d-flex flex-column flex-sm-row gap-2">
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+
+}

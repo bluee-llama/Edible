@@ -1,0 +1,18 @@
+@* HARIA-WEB GENERATED sha256:62027bde1d4f0a0f343966b158afb0b235168cf0d644ad2283e67b932777990b *@
+@model IEnumerable<Edible.Web.ViewModels.PasoViewModel>
+
+<h2 class="h5 mt-4">Pasos</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">@Html.DisplayNameFor(model => model.Nombre)</th>
+            <th scope="col">@Html.DisplayNameFor(model => model.Descripcion)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <partial name="_PasosDetailsItem" model="item" />
+        }
+    </tbody>
+</table>

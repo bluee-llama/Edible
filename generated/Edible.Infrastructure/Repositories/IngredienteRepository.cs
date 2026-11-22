@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using NHibernate;
-using NHibernate.Linq;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Exceptions;
 
 namespace Edible.Infrastructure.Repositories;
@@ -16,13 +16,8 @@ public sealed class IngredienteRepository : RepositoryBase<Ingrediente>, IIngred
     {
     }
 
-    public IngredienteRepository(ISession session, ILogger<IngredienteRepository>? logger = null)
-        : base(session, logger)
-    {
-    }
-
-    public IngredienteRepository(ISessionFactory sessionFactory, ILogger<IngredienteRepository>? logger = null)
-        : base(sessionFactory, logger)
+    public IngredienteRepository(EdibleDbContext dbContext, ILogger<IngredienteRepository>? logger = null)
+        : base(dbContext, logger)
     {
     }
 
@@ -30,8 +25,7 @@ public sealed class IngredienteRepository : RepositoryBase<Ingrediente>, IIngred
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.Query<Ingrediente>().ToListAsync();
+            return await DbContext.Set<Ingrediente>().ToListAsync();
         }
         catch (Exception ex)
         {
@@ -44,8 +38,9 @@ public sealed class IngredienteRepository : RepositoryBase<Ingrediente>, IIngred
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.GetAsync<Ingrediente>(id);
+            var entity = await DbContext.Set<Ingrediente>().FindAsync([id]);
+
+            return entity;
         }
         catch (Exception ex)
         {
@@ -58,7 +53,34 @@ public sealed class IngredienteRepository : RepositoryBase<Ingrediente>, IIngred
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Save",
-            session => session.SaveOrUpdateAsync(entity),
+            async dbContext =>
+            {
+                var set = dbContext.Set<Ingrediente>();
+                var entry = dbContext.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    if (HasDefaultKey(entity))
+                    {
+                        set.Add(entity);
+                    }
+                    else
+                    {
+                        var exists = await EntityExistsAsync(set, entity);
+                        if (exists)
+                        {
+                            set.Update(entity);
+                        }
+                        else
+                        {
+                            set.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    set.Update(entity);
+                }
+            },
             $"Error saving {EntityName} entity.");
     }
 
@@ -66,9 +88,18 @@ public sealed class IngredienteRepository : RepositoryBase<Ingrediente>, IIngred
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Delete",
-            session => session.DeleteAsync(entity),
+            dbContext =>
+            {
+                dbContext.Set<Ingrediente>().Remove(entity);
+                return Task.CompletedTask;
+            },
             $"Error deleting {EntityName} entity.");
     }
 
+    private static bool HasDefaultKey(Ingrediente entity) =>
+        EqualityComparer<int>.Default.Equals(entity.Id, default);
+
+    private static Task<bool> EntityExistsAsync(DbSet<Ingrediente> set, Ingrediente entity) =>
+        set.AsNoTracking().AnyAsync(existing => existing.Id == entity.Id);
 
 }

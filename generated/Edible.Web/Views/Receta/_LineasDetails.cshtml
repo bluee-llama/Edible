@@ -1,0 +1,18 @@
+@* HARIA-WEB GENERATED sha256:86f4b7f3464cf733412cfe08b089925809bf621f9f3e79eb10329864e73db0bb *@
+@model IEnumerable<Edible.Web.ViewModels.LineaRecetaViewModel>
+
+<h2 class="h5 mt-4">Lineas</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">@Html.DisplayNameFor(model => model.CantidadNecesaria)</th>
+            <th scope="col">@Html.DisplayNameFor(model => model.IngredienteCatalogoLabel)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <partial name="_LineasDetailsItem" model="item" />
+        }
+    </tbody>
+</table>

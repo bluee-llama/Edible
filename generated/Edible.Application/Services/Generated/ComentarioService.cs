@@ -41,6 +41,16 @@ public sealed partial class ComentarioService : ServiceEntity<Comentario>
     public Task<Comentario> ModifierComentarioDefaultAsync(Comentario entity) =>
         ModifierDefaultAsync(entity);
 
+    public async Task ApplyComentarioRelationsAsync(Comentario entity, int? p_comentador_id, int? p_receta_id)
+    {
+        if (p_comentador_id is null) throw new ModelException("Comentario.Comentador is required.");
+        entity.Comentador = p_comentador_id is int selectedComentador
+            ? await _unitOfWork.UsuarioRepository.ReadAsync(selectedComentador) ?? throw new ModelException("Usuario not found for Comentario.Comentador.") : null!;
+        if (p_receta_id is null) throw new ModelException("Comentario.Receta is required.");
+        entity.Receta = p_receta_id is int selectedReceta
+            ? await _unitOfWork.RecetaRepository.ReadAsync(selectedReceta) ?? throw new ModelException("Receta not found for Comentario.Receta.") : null!;
+    }
+
     public async Task<Comentario> NewAsync(int p_user_id, string p_titulo, int p_valoracion, int p_comentador_oid, int p_receta_oid)
     {
         Usuario comentadorEntity = await _unitOfWork.UsuarioRepository.ReadAsync(p_comentador_oid)

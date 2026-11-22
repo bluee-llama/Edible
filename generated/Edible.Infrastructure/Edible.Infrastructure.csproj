@@ -7,29 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageReference Include="NHibernate" Version="5.5.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Edible.Application\Edible.Application.csproj" />
     <ProjectReference Include="..\Edible.Domain\Edible.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Mappings\Edible\usuario.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\chef.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\nevera.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\listacompra.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\receta.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\lineareceta.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\ingrediente.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\ingredientecompra.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\ingredientenevera.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\comentario.hbm.xml" />
-    <EmbeddedResource Include="Mappings\Edible\paso.hbm.xml" />
   </ItemGroup>
 
 </Project>

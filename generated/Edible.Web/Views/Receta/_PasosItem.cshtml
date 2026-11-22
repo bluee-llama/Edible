@@ -1,0 +1,14 @@
+@* HARIA-WEB GENERATED sha256:8e68d9903d42d32f3f96e807d61721f6d89c7d7a1d1447d190a6cd0b27693b38 *@
+@model Edible.Web.ViewModels.PasoViewModel
+    <input asp-for="Id" type="hidden" />
+    <span asp-validation-for="Id" class="text-danger"></span>
+        <div class="mb-3">
+            <label asp-for="Nombre" class="form-label"></label>
+            <input asp-for="Nombre" class="form-control" />
+            <span asp-validation-for="Nombre" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Descripcion" class="form-label"></label>
+            <input asp-for="Descripcion" class="form-control" />
+            <span asp-validation-for="Descripcion" class="text-danger"></span>
+        </div>

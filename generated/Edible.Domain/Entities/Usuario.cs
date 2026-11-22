@@ -6,15 +6,15 @@ namespace Edible.Domain.Entities;
 
 public partial class Usuario
 {
-    public virtual int Id { get; set; }
-    public virtual string Name { get; set; } = string.Empty;
-    public virtual string Password { get; set; } = string.Empty;
-    public virtual bool Publico { get; set; }
-    public virtual DietaEspecial Dieta { get; set; }
-    public virtual IList<Comentario> Comentario { get; set; } = new List<Comentario>();
-    public virtual Nevera Nevera { get; set; } = null!;
-    public virtual ListaCompra ListaCompra { get; set; } = null!;
-    public virtual IList<Receta> RecetasSugeridas { get; set; } = new List<Receta>();
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public bool Publico { get; set; }
+    public DietaEspecial Dieta { get; set; }
+    public IList<Comentario> Comentario { get; set; } = new List<Comentario>();
+    public Nevera Nevera { get; set; } = null!;
+    public ListaCompra ListaCompra { get; set; } = null!;
+    public IList<Receta> RecetasSugeridas { get; set; } = new List<Receta>();
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

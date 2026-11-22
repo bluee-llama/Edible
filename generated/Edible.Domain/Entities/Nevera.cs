@@ -5,10 +5,10 @@ namespace Edible.Domain.Entities;
 
 public partial class Nevera
 {
-    public virtual int Id { get; set; }
-    public virtual Usuario Usuario { get; set; } = null!;
-    public virtual IList<IngredienteCompra> IngredienteEnLaLista { get; set; } = new List<IngredienteCompra>();
-    public virtual IList<IngredienteNevera> IngredienteEnLaNevera { get; set; } = new List<IngredienteNevera>();
+    public int Id { get; set; }
+    public Usuario Usuario { get; set; } = null!;
+    public IList<IngredienteCompra> IngredienteEnLaLista { get; set; } = new List<IngredienteCompra>();
+    public IList<IngredienteNevera> IngredienteEnLaNevera { get; set; } = new List<IngredienteNevera>();
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

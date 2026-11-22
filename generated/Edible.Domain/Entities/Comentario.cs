@@ -5,14 +5,14 @@ namespace Edible.Domain.Entities;
 
 public partial class Comentario
 {
-    public virtual int Id { get; set; }
-    public virtual int User_id { get; set; }
-    public virtual string? Imagen { get; set; }
-    public virtual string Titulo { get; set; } = string.Empty;
-    public virtual string? Contenido { get; set; }
-    public virtual int Valoracion { get; set; }
-    public virtual Usuario Comentador { get; set; } = null!;
-    public virtual Receta Receta { get; set; } = null!;
+    public int Id { get; set; }
+    public int User_id { get; set; }
+    public string? Imagen { get; set; }
+    public string Titulo { get; set; } = string.Empty;
+    public string? Contenido { get; set; }
+    public int Valoracion { get; set; }
+    public Usuario Comentador { get; set; } = null!;
+    public Receta Receta { get; set; } = null!;
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

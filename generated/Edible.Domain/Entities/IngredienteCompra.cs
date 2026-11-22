@@ -5,12 +5,12 @@ namespace Edible.Domain.Entities;
 
 public partial class IngredienteCompra
 {
-    public virtual int Id { get; set; }
-    public virtual int Cantidad { get; set; }
-    public virtual bool Comprado { get; set; }
-    public virtual Nevera Nevera { get; set; } = null!;
-    public virtual ListaCompra ListaCompra { get; set; } = null!;
-    public virtual Ingrediente IngredienteCatalogo { get; set; } = null!;
+    public int Id { get; set; }
+    public int Cantidad { get; set; }
+    public bool Comprado { get; set; }
+    public Nevera Nevera { get; set; } = null!;
+    public ListaCompra ListaCompra { get; set; } = null!;
+    public Ingrediente IngredienteCatalogo { get; set; } = null!;
 
     private bool HasDefaultIdentity() => EqualityComparer<int>.Default.Equals(Id, default);
 

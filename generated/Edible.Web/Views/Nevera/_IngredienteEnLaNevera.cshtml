@@ -1,0 +1,26 @@
+@* HARIA-WEB GENERATED sha256:6af089d3d8e284078961c5966bb85610f202221b6c3480fe54ae53f4d0bd1556 *@
+@model Edible.Web.ViewModels.NeveraViewModel
+@{
+    var templateData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData);
+    templateData.TemplateInfo.HtmlFieldPrefix = "IngredienteEnLaNevera[__index__]";
+}
+<fieldset class="mb-4" data-haria-composition data-prefix="IngredienteEnLaNevera">
+    <legend>IngredienteEnLaNevera</legend>
+    <span asp-validation-for="IngredienteEnLaNevera" class="text-danger"></span>
+    <div data-haria-rows>
+    @for (var index = 0; index < Model.IngredienteEnLaNevera.Count; index++)
+    {
+        <div class="border rounded p-3 mb-2" data-haria-row>
+            <partial name="_IngredienteEnLaNeveraItem" for="IngredienteEnLaNevera[index]" />
+            <button type="button" class="btn btn-sm btn-outline-danger" data-haria-remove>Eliminar línea</button>
+        </div>
+    }
+    </div>
+    <template>
+        <div class="border rounded p-3 mb-2" data-haria-row>
+            <partial name="_IngredienteEnLaNeveraItem" model="Model.IngredienteEnLaNeveraTemplate" view-data="templateData" />
+            <button type="button" class="btn btn-sm btn-outline-danger" data-haria-remove>Eliminar línea</button>
+        </div>
+    </template>
+    <button type="button" class="btn btn-outline-primary" data-haria-add>Añadir línea</button>
+</fieldset>

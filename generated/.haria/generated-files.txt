@@ -1,6 +1,7 @@
 ﻿# HARIA generated file manifest
 # Do not edit manually.
 .gitignore
+Edible.Application\.haria\obsolete-manual.targets
 Edible.Application\Abstractions\IChefRepository.cs
 Edible.Application\Abstractions\IComentarioRepository.cs
 Edible.Application\Abstractions\IHariaPasswordHasher.cs
@@ -53,23 +54,11 @@ Edible.Domain\Enums\EstadoCaducidad.cs
 Edible.Domain\Enums\HariaGeneratedNamespaceMarker.cs
 Edible.Domain\Enums\TipoIngrediente.cs
 Edible.Domain\ValueObjects\HariaGeneratedNamespaceMarker.cs
+Edible.Infrastructure\Data\EdibleDbContext.cs
 Edible.Infrastructure\Edible.Infrastructure.csproj
 Edible.Infrastructure\Exceptions\DataException.cs
 Edible.Infrastructure\Logging\FileLoggerOptions.cs
 Edible.Infrastructure\Logging\FileLoggerProvider.cs
-Edible.Infrastructure\Logging\NHibernateSqlLogging.cs
-Edible.Infrastructure\Logging\SqlStatementCapture.cs
-Edible.Infrastructure\Mappings\Edible\chef.hbm.xml
-Edible.Infrastructure\Mappings\Edible\comentario.hbm.xml
-Edible.Infrastructure\Mappings\Edible\ingrediente.hbm.xml
-Edible.Infrastructure\Mappings\Edible\ingredientecompra.hbm.xml
-Edible.Infrastructure\Mappings\Edible\ingredientenevera.hbm.xml
-Edible.Infrastructure\Mappings\Edible\lineareceta.hbm.xml
-Edible.Infrastructure\Mappings\Edible\listacompra.hbm.xml
-Edible.Infrastructure\Mappings\Edible\nevera.hbm.xml
-Edible.Infrastructure\Mappings\Edible\paso.hbm.xml
-Edible.Infrastructure\Mappings\Edible\receta.hbm.xml
-Edible.Infrastructure\Mappings\Edible\usuario.hbm.xml
 Edible.Infrastructure\Repositories\ChefRepository.cs
 Edible.Infrastructure\Repositories\ComentarioRepository.cs
 Edible.Infrastructure\Repositories\IngredienteCompraRepository.cs
@@ -95,7 +84,6 @@ Edible.Tests\Generated\ModelGeneratedTests.cs
 InitializeDB\appsettings.json
 InitializeDB\CreateDB.cs
 InitializeDB\Dockerfile
-InitializeDB\hibernate.cfg.xml
 InitializeDB\InitializeDB.csproj
 InitializeDB\Program.cs
 InitializeDB\Properties\launchSettings.json

@@ -59,6 +59,16 @@ public sealed partial class UsuarioService : ServiceEntity<Usuario>
         }
     }
 
+    public async Task ApplyUsuarioRelationsAsync(Usuario entity, int? p_nevera_id, int? p_listaCompra_id)
+    {
+        if (p_nevera_id is null) throw new ModelException("Usuario.Nevera is required.");
+        entity.Nevera = p_nevera_id is int selectedNevera
+            ? await _unitOfWork.NeveraRepository.ReadAsync(selectedNevera) ?? throw new ModelException("Nevera not found for Usuario.Nevera.") : null!;
+        if (p_listaCompra_id is null) throw new ModelException("Usuario.ListaCompra is required.");
+        entity.ListaCompra = p_listaCompra_id is int selectedListaCompra
+            ? await _unitOfWork.ListaCompraRepository.ReadAsync(selectedListaCompra) ?? throw new ModelException("ListaCompra not found for Usuario.ListaCompra.") : null!;
+    }
+
     public async Task<Usuario> NewAsync(string p_name, string p_password, bool p_publico, DietaEspecial p_dieta, Nevera p_nevera, ListaCompra p_listaCompra)
     {
         Usuario entity = new Usuario

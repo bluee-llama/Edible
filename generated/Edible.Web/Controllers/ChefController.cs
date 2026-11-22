@@ -1,0 +1,267 @@
+// HARIA-WEB MVC managed controller
+/*PROTECTED REGION ID(ChefController_usings) START*/
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Edible.Domain.Entities;
+using Edible.Application.Services;
+using Edible.Web.Assemblers;
+using Edible.Web.Utils.Security;
+
+using Edible.Domain.Enums;
+/*PROTECTED REGION END*/
+
+namespace Edible.Web.Controllers;
+
+/*PROTECTED REGION ID(ChefController_class_attributes) ENABLED START*/
+[Authorize]
+/*PROTECTED REGION END*/
+public partial class ChefController : Controller
+{
+    /*PROTECTED REGION ID(ChefController_dependencies) START*/
+    private readonly ChefService _chefService;
+    private readonly UsuarioService _usuarioService;
+    private readonly ILogger<ChefController> _logger;
+    private readonly Edible.Application.Abstractions.IUnitOfWorkFactory _formUnitOfWorkFactory;
+    public ChefController(ChefService chefService, UsuarioService usuarioService, Edible.Application.Abstractions.IUnitOfWorkFactory formUnitOfWorkFactory, ILogger<ChefController>? logger = null)
+    {
+        _chefService = chefService;
+        _usuarioService = usuarioService;
+
+        _formUnitOfWorkFactory = formUnitOfWorkFactory;
+
+        _logger = logger ?? global::Microsoft.Extensions.Logging.Abstractions.NullLogger<ChefController>.Instance;
+    }
+    /*PROTECTED REGION END*/
+    [HttpGet]
+    /*PROTECTED REGION ID(ChefController_Index_GET_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Index()
+    {
+    /*PROTECTED REGION ID(ChefController_Index_GET_body) START*/
+
+        var entities = await _chefService.ReadAllAsync();
+        return View(entities.Select(ChefAssembler.ToViewModel).ToList());
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpGet]
+    /*PROTECTED REGION ID(ChefController_Details_GET_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Details(int id)
+    {
+    /*PROTECTED REGION ID(ChefController_Details_GET_body) START*/
+
+        var entity = await _chefService.ReadOIDAsync(id);
+        if (entity is null) return NotFound();
+        return View(ChefAssembler.ToViewModel(entity));
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpGet]
+    /*PROTECTED REGION ID(ChefController_Create_GET_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Create()
+    {
+    /*PROTECTED REGION ID(ChefController_Create_GET_body) START*/
+
+        var model = new Edible.Web.ViewModels.ChefViewModel();
+
+        await LoadFormOptionsAsync(model);
+        return View(model);
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    /*PROTECTED REGION ID(ChefController_Create_POST_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Create(Edible.Web.ViewModels.ChefViewModel model)
+    {
+    /*PROTECTED REGION ID(ChefController_Create_POST_body) START*/
+
+
+        await using var unitOfWork = _formUnitOfWorkFactory.Create();
+        var service = new global::Edible.Application.Services.ChefService(unitOfWork);
+
+
+
+
+
+        await LoadFormOptionsAsync(model, unitOfWork);
+        if (model.NeveraId is int selectedNevera &&
+            !model.NeveraOptions.Any(option => option.Value == Convert.ToString(selectedNevera, System.Globalization.CultureInfo.InvariantCulture)))
+            ModelState.AddModelError("NeveraId", "Selecciona un registro existente de Nevera.");
+        if (model.NeveraId is null) ModelState.AddModelError("NeveraId", "Debes seleccionar una opción.");
+        if (model.ListaCompraId is int selectedListaCompra &&
+            !model.ListaCompraOptions.Any(option => option.Value == Convert.ToString(selectedListaCompra, System.Globalization.CultureInfo.InvariantCulture)))
+            ModelState.AddModelError("ListaCompraId", "Selecciona un registro existente de ListaCompra.");
+        if (model.ListaCompraId is null) ModelState.AddModelError("ListaCompraId", "Debes seleccionar una opción.");
+
+
+        if (string.IsNullOrEmpty(model.Password)) ModelState.AddModelError(nameof(model.Password), "Debes indicar una contraseña.");
+
+        if (!ModelState.IsValid) return View(model);
+
+
+        try
+        {
+            await unitOfWork.BeginTransactionAsync("MVC.Chef.Create");
+
+            var argumentNevera = await unitOfWork.NeveraRepository.ReadAsync(model.NeveraId.GetValueOrDefault()) ?? throw new InvalidOperationException("Nevera not found.");
+            var argumentListaCompra = await unitOfWork.ListaCompraRepository.ReadAsync(model.ListaCompraId.GetValueOrDefault()) ?? throw new InvalidOperationException("ListaCompra not found.");
+            var entity = await service.NewAsync(model.Name, model.Password!, model.Publico, model.Dieta, argumentNevera, argumentListaCompra);
+
+            await service.ApplyChefRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId);
+
+            await service.ModifierChefDefaultAsync(entity);
+
+
+            await unitOfWork.CommitAsync();
+        }
+        catch (Exception error)
+        {
+            await unitOfWork.RollbackAsync();
+            if (error is OperationCanceledException) throw;
+            _logger.LogError(error, "Could not save the record and its lines.");
+            ModelState.AddModelError(string.Empty, "No se han podido guardar el registro y sus líneas.");
+            return View(model);
+        }
+
+
+        return RedirectToAction(nameof(Index));
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpGet]
+    /*PROTECTED REGION ID(ChefController_Edit_GET_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Edit(int id)
+    {
+    /*PROTECTED REGION ID(ChefController_Edit_GET_body) START*/
+
+        var entity = await _chefService.ReadOIDAsync(id);
+        if (entity is null) return NotFound();
+        var model = ChefAssembler.ToViewModel(entity);
+        await LoadFormOptionsAsync(model);
+        return View(model);
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    /*PROTECTED REGION ID(ChefController_Edit_POST_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.ChefViewModel model)
+    {
+    /*PROTECTED REGION ID(ChefController_Edit_POST_body) START*/
+
+
+        await using var unitOfWork = _formUnitOfWorkFactory.Create();
+        var service = new global::Edible.Application.Services.ChefService(unitOfWork);
+
+        var entity = await service.ReadOIDChefDefaultAsync(id);
+        if (entity is null) return NotFound();
+
+
+
+        await LoadFormOptionsAsync(model, unitOfWork);
+        if (model.NeveraId is int selectedNevera &&
+            !model.NeveraOptions.Any(option => option.Value == Convert.ToString(selectedNevera, System.Globalization.CultureInfo.InvariantCulture)))
+            ModelState.AddModelError("NeveraId", "Selecciona un registro existente de Nevera.");
+        if (model.NeveraId is null) ModelState.AddModelError("NeveraId", "Debes seleccionar una opción.");
+        if (model.ListaCompraId is int selectedListaCompra &&
+            !model.ListaCompraOptions.Any(option => option.Value == Convert.ToString(selectedListaCompra, System.Globalization.CultureInfo.InvariantCulture)))
+            ModelState.AddModelError("ListaCompraId", "Selecciona un registro existente de ListaCompra.");
+        if (model.ListaCompraId is null) ModelState.AddModelError("ListaCompraId", "Debes seleccionar una opción.");
+
+
+
+
+        if (!ModelState.IsValid) return View(model);
+
+
+        try
+        {
+            await unitOfWork.BeginTransactionAsync("MVC.Chef.Edit");
+
+
+            await service.ModifyAsync(id, model.Name, (string.IsNullOrEmpty(model.Password) ? entity.Password : model.Password), model.Publico, model.Dieta);
+            entity = await service.ReadOIDChefDefaultAsync(id) ?? throw new InvalidOperationException("Entity disappeared during update.");
+            await service.ApplyChefRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId);
+
+            await service.ModifierChefDefaultAsync(entity);
+
+
+            await unitOfWork.CommitAsync();
+        }
+        catch (Exception error)
+        {
+            await unitOfWork.RollbackAsync();
+            if (error is OperationCanceledException) throw;
+            _logger.LogError(error, "Could not save the record and its lines.");
+            ModelState.AddModelError(string.Empty, "No se han podido guardar el registro y sus líneas.");
+            return View(model);
+        }
+
+
+        return RedirectToAction(nameof(Index));
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpGet]
+    /*PROTECTED REGION ID(ChefController_Delete_GET_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> Delete(int id)
+    {
+    /*PROTECTED REGION ID(ChefController_Delete_GET_body) START*/
+
+        var entity = await _chefService.ReadOIDAsync(id);
+        if (entity is null) return NotFound();
+        return View(ChefAssembler.ToViewModel(entity));
+    /*PROTECTED REGION END*/
+    }
+
+    [HttpPost]
+    [ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    /*PROTECTED REGION ID(ChefController_DeleteConfirmed_POST_attributes) START*/
+    /*PROTECTED REGION END*/
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+    /*PROTECTED REGION ID(ChefController_DeleteConfirmed_POST_body) START*/
+
+        if (!ModelState.IsValid) return View("Delete", new Edible.Web.ViewModels.ChefViewModel());
+        await _chefService.DestroyAsync(id);
+        return RedirectToAction(nameof(Index));
+    /*PROTECTED REGION END*/
+    }
+
+    /*PROTECTED REGION ID(ChefController_method_LoadFormOptionsAsync_EdibleWebViewModelsChefViewModel) START*/
+    private async Task LoadFormOptionsAsync(Edible.Web.ViewModels.ChefViewModel model)
+    {
+        await using var unitOfWork = _formUnitOfWorkFactory.Create();
+        await LoadFormOptionsAsync(model, unitOfWork);
+    }
+    /*PROTECTED REGION END*/
+
+    /*PROTECTED REGION ID(ChefController_method_LoadFormOptionsAsync_EdibleWebViewModelsChefViewModel_EdibleApplicationAbstractionsIUnitOfWork) START*/
+    private async Task LoadFormOptionsAsync(Edible.Web.ViewModels.ChefViewModel model, Edible.Application.Abstractions.IUnitOfWork unitOfWork)
+    {
+
+        var options0 = (await unitOfWork.NeveraRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
+        var options1 = (await unitOfWork.ListaCompraRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
+        model.NeveraOptions = options0.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+        {
+            Value = item.Value,
+            Text = item.Text
+        }).ToList();
+        model.ListaCompraOptions = options1.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+        {
+            Value = item.Value,
+            Text = item.Text
+        }).ToList();
+
+    }
+    /*PROTECTED REGION END*/
+
+}

@@ -41,6 +41,75 @@ public sealed partial class RecetaService : ServiceEntity<Receta>
     public Task<Receta> ModifierRecetaDefaultAsync(Receta entity) =>
         ModifierDefaultAsync(entity);
 
+    public async Task ApplyRecetaRelationsAsync(Receta entity, int? p_chef_id, IReadOnlyList<Paso> p_pasos, IReadOnlyList<LineaReceta> p_lineas)
+    {
+        if (p_chef_id is null) throw new ModelException("Receta.Chef is required.");
+        entity.Chef = p_chef_id is int selectedChef
+            ? await _unitOfWork.ChefRepository.ReadAsync(selectedChef) ?? throw new ModelException("Chef not found for Receta.Chef.") : null!;
+        if (p_pasos.Count < 0 || p_pasos.Count > 500) throw new ModelException("Invalid number of Pasos rows.");
+        foreach (var removed in entity.Pasos.Where(child => !p_pasos.Contains(child)).ToList()) entity.Pasos.Remove(removed);
+        foreach (var child in p_pasos)
+        {
+            child.Receta = entity;
+            if (!entity.Pasos.Contains(child)) entity.Pasos.Add(child);
+        }
+        if (p_lineas.Count < 1 || p_lineas.Count > 500) throw new ModelException("Invalid number of Lineas rows.");
+        foreach (var removed in entity.Lineas.Where(child => !p_lineas.Contains(child)).ToList()) entity.Lineas.Remove(removed);
+        foreach (var child in p_lineas)
+        {
+            child.Receta = entity;
+            if (!entity.Lineas.Contains(child)) entity.Lineas.Add(child);
+        }
+    }
+
+    public async Task<List<Paso>> PrepareRecetaPasosAsync(Receta? parent, IReadOnlyList<(int Id, Paso Values)> rows)
+    {
+        if (rows.Count < 0 || rows.Count > 500) throw new ModelException("Invalid number of Pasos rows.");
+        var seen = new HashSet<int>();
+        var result = new List<Paso>();
+        foreach (var row in rows)
+        {
+            var existing = !EqualityComparer<int>.Default.Equals(row.Id, default!);
+            if (existing && (parent is null || !seen.Add(row.Id) || !parent.Pasos.Any(child => child.Id.Equals(row.Id))))
+                throw new ModelException("The row does not belong to this record or is duplicated.");
+            var child = existing ? parent!.Pasos.Single(item => item.Id.Equals(row.Id)) : new Paso();
+            child.Nombre = row.Values.Nombre;
+            child.Descripcion = row.Values.Descripcion;
+            result.Add(child);
+        }
+        return result;
+    }
+
+    public async Task<List<LineaReceta>> PrepareRecetaLineasAsync(Receta? parent, IReadOnlyList<(int Id, LineaReceta Values, int? IngredienteCatalogoId)> rows)
+    {
+        if (rows.Count < 1 || rows.Count > 500) throw new ModelException("Invalid number of Lineas rows.");
+        var seen = new HashSet<int>();
+        var result = new List<LineaReceta>();
+        foreach (var row in rows)
+        {
+            var existing = !EqualityComparer<int>.Default.Equals(row.Id, default!);
+            if (existing && (parent is null || !seen.Add(row.Id) || !parent.Lineas.Any(child => child.Id.Equals(row.Id))))
+                throw new ModelException("The row does not belong to this record or is duplicated.");
+            var child = existing ? parent!.Lineas.Single(item => item.Id.Equals(row.Id)) : new LineaReceta();
+            child.CantidadNecesaria = row.Values.CantidadNecesaria;
+            if (row.IngredienteCatalogoId is null) throw new ModelException("LineaReceta.IngredienteCatalogo is required.");
+            child.IngredienteCatalogo = row.IngredienteCatalogoId is int selectedIngredienteCatalogo
+                ? await _unitOfWork.IngredienteRepository.ReadAsync(selectedIngredienteCatalogo) ?? throw new ModelException("Ingrediente not found for LineaReceta.IngredienteCatalogo.") : null!;
+            result.Add(child);
+        }
+        return result;
+    }
+
+    public async Task ApplyLineaRecetaRelationsAsync(LineaReceta entity, int? p_receta_id, int? p_ingredienteCatalogo_id)
+    {
+        if (p_receta_id is null) throw new ModelException("LineaReceta.Receta is required.");
+        entity.Receta = p_receta_id is int selectedReceta
+            ? await _unitOfWork.RecetaRepository.ReadAsync(selectedReceta) ?? throw new ModelException("Receta not found for LineaReceta.Receta.") : null!;
+        if (p_ingredienteCatalogo_id is null) throw new ModelException("LineaReceta.IngredienteCatalogo is required.");
+        entity.IngredienteCatalogo = p_ingredienteCatalogo_id is int selectedIngredienteCatalogo
+            ? await _unitOfWork.IngredienteRepository.ReadAsync(selectedIngredienteCatalogo) ?? throw new ModelException("Ingrediente not found for LineaReceta.IngredienteCatalogo.") : null!;
+    }
+
     public async Task<Receta> NewAsync(string p_nombre, string p_descripcion, DietaEspecial p_dietaEspecial, float p_valoracionMedia, int p_tiempoRealizacion, int p_dificultad, int p_chef_oid, IReadOnlyList<LineaReceta> p_lineas)
     {
         Chef chefEntity = await _unitOfWork.ChefRepository.ReadAsync(p_chef_oid)

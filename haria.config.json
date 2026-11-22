@@ -1,6 +1,6 @@
 {
   "generation": {
-    "orm": "nhibernate",
+    "orm": "entityframework",
     "outputDirectory": "generated",
     "projectName": "Edible",
     "targetFramework": "net9.0",

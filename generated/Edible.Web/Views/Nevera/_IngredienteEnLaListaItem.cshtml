@@ -1,0 +1,26 @@
+@* HARIA-WEB GENERATED sha256:6303c7f0b93c8f7089cf2d1a520667390942c240b8c597c5da9185b2506bc1fb *@
+@model Edible.Web.ViewModels.IngredienteCompraViewModel
+    <input asp-for="Id" type="hidden" />
+    <span asp-validation-for="Id" class="text-danger"></span>
+        <div class="mb-3">
+            <label asp-for="Cantidad" class="form-label"></label>
+            <input asp-for="Cantidad" class="form-control" />
+            <span asp-validation-for="Cantidad" class="text-danger"></span>
+        </div>
+        <div class="form-check mb-3">
+            <input asp-for="Comprado" class="form-check-input" />
+            <label asp-for="Comprado" class="form-check-label"></label>
+            <span asp-validation-for="Comprado" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ListaCompraId" class="form-label"></label>
+            <select asp-for="ListaCompraId" asp-items="Model.ListaCompraOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="ListaCompraId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="IngredienteCatalogoId" class="form-label"></label>
+            <select asp-for="IngredienteCatalogoId" asp-items="Model.IngredienteCatalogoOptions" class="form-select"><option value="">Selecciona...</option></select>
+            <span asp-validation-for="IngredienteCatalogoId" class="text-danger"></span>
+        </div>
+

@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using NHibernate;
-using NHibernate.Linq;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Exceptions;
 
 namespace Edible.Infrastructure.Repositories;
@@ -16,13 +16,8 @@ public sealed class UsuarioRepository : RepositoryBase<Usuario>, IUsuarioReposit
     {
     }
 
-    public UsuarioRepository(ISession session, ILogger<UsuarioRepository>? logger = null)
-        : base(session, logger)
-    {
-    }
-
-    public UsuarioRepository(ISessionFactory sessionFactory, ILogger<UsuarioRepository>? logger = null)
-        : base(sessionFactory, logger)
+    public UsuarioRepository(EdibleDbContext dbContext, ILogger<UsuarioRepository>? logger = null)
+        : base(dbContext, logger)
     {
     }
 
@@ -30,8 +25,7 @@ public sealed class UsuarioRepository : RepositoryBase<Usuario>, IUsuarioReposit
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.Query<Usuario>().ToListAsync();
+            return await DbContext.Set<Usuario>().Include(entity => entity.Nevera).Include(entity => entity.ListaCompra).ToListAsync();
         }
         catch (Exception ex)
         {
@@ -44,8 +38,10 @@ public sealed class UsuarioRepository : RepositoryBase<Usuario>, IUsuarioReposit
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.GetAsync<Usuario>(id);
+            var entity = await DbContext.Set<Usuario>().FindAsync([id]);
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.Nevera).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.ListaCompra).LoadAsync();
+            return entity;
         }
         catch (Exception ex)
         {
@@ -58,7 +54,34 @@ public sealed class UsuarioRepository : RepositoryBase<Usuario>, IUsuarioReposit
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Save",
-            session => session.SaveOrUpdateAsync(entity),
+            async dbContext =>
+            {
+                var set = dbContext.Set<Usuario>();
+                var entry = dbContext.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    if (HasDefaultKey(entity))
+                    {
+                        set.Add(entity);
+                    }
+                    else
+                    {
+                        var exists = await EntityExistsAsync(set, entity);
+                        if (exists)
+                        {
+                            set.Update(entity);
+                        }
+                        else
+                        {
+                            set.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    set.Update(entity);
+                }
+            },
             $"Error saving {EntityName} entity.");
     }
 
@@ -66,9 +89,18 @@ public sealed class UsuarioRepository : RepositoryBase<Usuario>, IUsuarioReposit
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Delete",
-            session => session.DeleteAsync(entity),
+            dbContext =>
+            {
+                dbContext.Set<Usuario>().Remove(entity);
+                return Task.CompletedTask;
+            },
             $"Error deleting {EntityName} entity.");
     }
 
+    private static bool HasDefaultKey(Usuario entity) =>
+        EqualityComparer<int>.Default.Equals(entity.Id, default);
+
+    private static Task<bool> EntityExistsAsync(DbSet<Usuario> set, Usuario entity) =>
+        set.AsNoTracking().AnyAsync(existing => existing.Id == entity.Id);
 
 }

@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using NHibernate;
-using NHibernate.Linq;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
 using Edible.Domain.ValueObjects;
+using Edible.Infrastructure.Data;
 using Edible.Infrastructure.Exceptions;
 
 namespace Edible.Infrastructure.Repositories;
@@ -16,13 +16,8 @@ public sealed class IngredienteCompraRepository : RepositoryBase<IngredienteComp
     {
     }
 
-    public IngredienteCompraRepository(ISession session, ILogger<IngredienteCompraRepository>? logger = null)
-        : base(session, logger)
-    {
-    }
-
-    public IngredienteCompraRepository(ISessionFactory sessionFactory, ILogger<IngredienteCompraRepository>? logger = null)
-        : base(sessionFactory, logger)
+    public IngredienteCompraRepository(EdibleDbContext dbContext, ILogger<IngredienteCompraRepository>? logger = null)
+        : base(dbContext, logger)
     {
     }
 
@@ -30,8 +25,7 @@ public sealed class IngredienteCompraRepository : RepositoryBase<IngredienteComp
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.Query<IngredienteCompra>().ToListAsync();
+            return await DbContext.Set<IngredienteCompra>().Include(entity => entity.Nevera).Include(entity => entity.ListaCompra).Include(entity => entity.IngredienteCatalogo).ToListAsync();
         }
         catch (Exception ex)
         {
@@ -44,8 +38,11 @@ public sealed class IngredienteCompraRepository : RepositoryBase<IngredienteComp
     {
         try
         {
-            using var context = OpenSession();
-            return await context.Session.GetAsync<IngredienteCompra>(id);
+            var entity = await DbContext.Set<IngredienteCompra>().FindAsync([id]);
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.Nevera).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.ListaCompra).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Reference(item => item.IngredienteCatalogo).LoadAsync();
+            return entity;
         }
         catch (Exception ex)
         {
@@ -58,7 +55,34 @@ public sealed class IngredienteCompraRepository : RepositoryBase<IngredienteComp
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Save",
-            session => session.SaveOrUpdateAsync(entity),
+            async dbContext =>
+            {
+                var set = dbContext.Set<IngredienteCompra>();
+                var entry = dbContext.Entry(entity);
+                if (entry.State == EntityState.Detached)
+                {
+                    if (HasDefaultKey(entity))
+                    {
+                        set.Add(entity);
+                    }
+                    else
+                    {
+                        var exists = await EntityExistsAsync(set, entity);
+                        if (exists)
+                        {
+                            set.Update(entity);
+                        }
+                        else
+                        {
+                            set.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    set.Update(entity);
+                }
+            },
             $"Error saving {EntityName} entity.");
     }
 
@@ -66,9 +90,18 @@ public sealed class IngredienteCompraRepository : RepositoryBase<IngredienteComp
     {
         await ExecuteRepositoryOperationInTransactionAsync(
             "Delete",
-            session => session.DeleteAsync(entity),
+            dbContext =>
+            {
+                dbContext.Set<IngredienteCompra>().Remove(entity);
+                return Task.CompletedTask;
+            },
             $"Error deleting {EntityName} entity.");
     }
 
+    private static bool HasDefaultKey(IngredienteCompra entity) =>
+        EqualityComparer<int>.Default.Equals(entity.Id, default);
+
+    private static Task<bool> EntityExistsAsync(DbSet<IngredienteCompra> set, IngredienteCompra entity) =>
+        set.AsNoTracking().AnyAsync(existing => existing.Id == entity.Id);
 
 }

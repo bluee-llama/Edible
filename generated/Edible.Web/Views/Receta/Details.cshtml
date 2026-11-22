@@ -1,0 +1,47 @@
+@* HARIA-WEB GENERATED sha256:437b951e9edae8765e3b89aeed69fb81a790a30e3d9c72aaae642e7a81f7cbc9 *@
+@model Edible.Web.ViewModels.RecetaViewModel
+
+@{
+    ViewData["Title"] = "Detalles";
+}
+
+<div class="row justify-content-center">
+    <div class="col-xl-9">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Detalles</span>
+                <h1 class="h3 mb-1">Receta</h1>
+                <p class="text-body-secondary mb-0">Review the complete record information.</p>
+            </div>
+            <div class="card-body p-4">
+                <dl class="row mb-0 gy-2">
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.Id)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.Id)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.Nombre)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.Nombre)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.Descripcion)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.Descripcion)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.DietaEspecial)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.DietaEspecial)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.ValoracionMedia)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.ValoracionMedia)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.TiempoRealizacion)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.TiempoRealizacion)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.Dificultad)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.Dificultad)</dd>
+            <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.ChefLabel)</dt>
+            <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.ChefLabel)</dd>
+                </dl>
+                <partial name="_PasosDetails" model="Model.Pasos" />
+                <partial name="_LineasDetails" model="Model.Lineas" />
+
+            </div>
+            <div class="card-footer bg-body p-4">
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
+            </div>
+            </div>
+        </div>
+    </div>
+</div>
