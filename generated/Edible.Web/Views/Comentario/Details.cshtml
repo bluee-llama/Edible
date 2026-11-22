@@ -44,7 +44,10 @@
             </div>
             <div class="card-footer bg-body p-4">
                 <div class="d-flex flex-column flex-sm-row gap-2">
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                @if (User.IsInRole("Administrador") || Model.ComentadorId?.ToString() == User.Identity?.Name)
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                }
                 <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
             </div>
             </div>

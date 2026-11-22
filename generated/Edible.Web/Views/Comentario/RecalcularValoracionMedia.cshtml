@@ -1,0 +1,98 @@
+@model Edible.Web.ViewModels.RecalcularValoracionViewModel
+
+@{
+    ViewData["Title"] = "Publicar comentario con valoración";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        @if (TempData["Success"] is string ok)
+        {
+            <div class="alert alert-success" role="status">@ok</div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-body p-4">
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Operación</span>
+                <h1 class="h3 mb-1">Publicar comentario con valoración</h1>
+                <p class="text-body-secondary mb-0">
+                    Publica un comentario y recalcula la valoración media de la receta en la misma transacción.
+                </p>
+            </div>
+            <form asp-action="RecalcularValoracionMedia" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="p_user_id" value="1" />
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label for="p_roleB_oid" class="form-label">Receta</label>
+                        <select id="p_roleB_oid" name="p_roleB_oid" asp-items="Model.RecetaOptions" class="form-select" required>
+                            <option value="">Selecciona...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="p_comentador_oid" class="form-label">Comentador</label>
+                        <select id="p_comentador_oid" name="p_comentador_oid" asp-items="Model.ComentadorOptions" class="form-select" required>
+                            @if (Model.ComentadorOptions.Count != 1)
+                            {
+                                <option value="">Selecciona...</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="p_titulo" class="form-label">Título</label>
+                        <input id="p_titulo" name="p_titulo" class="form-control" maxlength="200" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="p_valoracion" class="form-label">Valoración (1 a 5)</label>
+                        <select id="p_valoracion" name="p_valoracion" class="form-select" required>
+                            @for (var i = 5; i >= 1; i--)
+                            {
+                                <option value="@i" selected="@(i == Model.Valoracion)">@i</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="card-footer bg-body p-4 d-flex flex-column flex-sm-row gap-2">
+                    <button type="submit" class="btn btn-primary">Publicar y recalcular</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <h2 class="h5 mb-1">Valoración media actual de las recetas</h2>
+                <p class="text-body-secondary mb-0">Valor persistido en base de datos tras cada operación.</p>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Recetas.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th scope="col">Receta</th><th scope="col" class="text-end">Valoración media</th></tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var receta in Model.Recetas)
+                            {
+                                <tr class="@(receta.Id == Model.RecetaId ? "table-primary" : null)">
+                                    <td><a asp-controller="Receta" asp-action="Details" asp-route-id="@receta.Id">@receta.Nombre</a></td>
+                                    <td class="text-end">@receta.ValoracionMedia.ToString("0.0#")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-body-secondary p-4 mb-0">Todavía no hay recetas.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

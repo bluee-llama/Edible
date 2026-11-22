@@ -33,6 +33,11 @@
             <span asp-validation-for="Titulo" class="text-danger"></span>
         </div>
         <div class="mb-3">
+            <label asp-for="Contenido" class="form-label"></label>
+            <textarea asp-for="Contenido" class="form-control" rows="4"></textarea>
+            <span asp-validation-for="Contenido" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
             <label asp-for="Valoracion" class="form-label"></label>
             <input asp-for="Valoracion" class="form-control" />
             <span asp-validation-for="Valoracion" class="text-danger"></span>

@@ -1,5 +1,6 @@
 using Edible.Application.Abstractions;
 using Edible.Application.Exceptions;
+using Edible.Application.Services;
 using Edible.Application.UseCases.Comentario;
 using Edible.Domain.Entities;
 using Edible.Domain.Enums;
@@ -128,6 +129,118 @@ public class ComentarioTests
         Assert.Empty(await scenario.UnitOfWork.ComentarioRepository.ReadAllAsync());
         var receta = await scenario.UnitOfWork.RecetaRepository.ReadAsync(d.RecetaId);
         Assert.Equal(0.0, receta!.ValoracionMedia, 2);
+    }
+
+    // ---- Persistencia real (sesión nueva) y campos fuera del contrato (Contenido, Imagen) ----
+
+    [Fact]
+    public async Task RecalcularValoracionMedia_PersisteComentarioYMediaEnSesionNueva()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(scenario.UnitOfWork);
+        var useCase = new ComentarioUseCase(scenario.UnitOfWork);
+
+        var comentario = await useCase.RecalcularValoracionMediaAsync(7, "Muy rica", 4, d.UsuarioId, d.RecetaId);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var guardado = await fresh.ComentarioRepository.ReadAsync(comentario.Id);
+        Assert.NotNull(guardado);
+        Assert.Equal(7, guardado!.User_id);
+        Assert.Equal("Muy rica", guardado.Titulo);
+        Assert.Equal(4, guardado.Valoracion);
+        Assert.Equal(d.UsuarioId, guardado.Comentador.Id);
+        Assert.Equal(d.RecetaId, guardado.Receta.Id);
+
+        var receta = await fresh.RecetaRepository.ReadAsync(d.RecetaId);
+        Assert.Equal(4.0, receta!.ValoracionMedia, 2);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    public async Task RecalcularValoracionMedia_ValoracionFrontera_EsValida(int valoracion)
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(scenario.UnitOfWork);
+        var useCase = new ComentarioUseCase(scenario.UnitOfWork);
+
+        await useCase.RecalcularValoracionMediaAsync(1, "frontera", valoracion, d.UsuarioId, d.RecetaId);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var receta = await fresh.RecetaRepository.ReadAsync(d.RecetaId);
+        Assert.Equal((double)valoracion, receta!.ValoracionMedia, 2);
+    }
+
+    [Fact]
+    public async Task RecalcularValoracionMedia_MediaConDecimales_SePersisteSinRedondearAEntero()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(scenario.UnitOfWork);
+        var useCase = new ComentarioUseCase(scenario.UnitOfWork);
+
+        await useCase.RecalcularValoracionMediaAsync(1, "a", 5, d.UsuarioId, d.RecetaId);
+        await useCase.RecalcularValoracionMediaAsync(1, "b", 4, d.UsuarioId, d.RecetaId);
+        await useCase.RecalcularValoracionMediaAsync(1, "c", 4, d.UsuarioId, d.RecetaId);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var receta = await fresh.RecetaRepository.ReadAsync(d.RecetaId);
+        Assert.Equal(13.0 / 3.0, receta!.ValoracionMedia, 2); // 4,33
+    }
+
+    [Fact]
+    public async Task Comentario_ContenidoEImagen_SePersistenEnSesionNueva()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(scenario.UnitOfWork);
+        var service = new ComentarioService(scenario.UnitOfWork);
+
+        // Mismo recorrido que ComentarioController.Create: New + Contenido/Imagen + Modifier.
+        var entity = await service.NewAsync(1, "Con foto", 5, d.UsuarioId, d.RecetaId);
+        entity.Contenido = "Quedó jugosa y rápida de hacer.";
+        entity.Imagen = "uploads/Comentario/Imagen/1/0123456789abcdef0123456789abcdef.png";
+        await service.ModifierComentarioDefaultAsync(entity);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var leido = await fresh.ComentarioRepository.ReadAsync(entity.Id);
+        Assert.Equal("Quedó jugosa y rápida de hacer.", leido!.Contenido);
+        Assert.Equal("uploads/Comentario/Imagen/1/0123456789abcdef0123456789abcdef.png", leido.Imagen);
+    }
+
+    [Fact]
+    public async Task Comentario_ModifyAsync_NoPierdeContenidoNiImagen()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(scenario.UnitOfWork);
+        var service = new ComentarioService(scenario.UnitOfWork);
+        var entity = await service.NewAsync(1, "Título", 3, d.UsuarioId, d.RecetaId);
+        entity.Contenido = "Texto original";
+        entity.Imagen = "uploads/Comentario/Imagen/1/0123456789abcdef0123456789abcdef.png";
+        await service.ModifierComentarioDefaultAsync(entity);
+
+        await service.ModifyAsync(entity.Id, 1, "Título editado", 4);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var leido = await fresh.ComentarioRepository.ReadAsync(entity.Id);
+        Assert.Equal("Título editado", leido!.Titulo);
+        Assert.Equal(4, leido.Valoracion);
+        Assert.Equal("Texto original", leido.Contenido);
+        Assert.Equal("uploads/Comentario/Imagen/1/0123456789abcdef0123456789abcdef.png", leido.Imagen);
+    }
+
+    [Fact]
+    public async Task Comentario_Destroy_EliminaElComentarioYConservaReceta()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(scenario.UnitOfWork);
+        var useCase = new ComentarioUseCase(scenario.UnitOfWork);
+        var comentario = await useCase.RecalcularValoracionMediaAsync(1, "borrar", 2, d.UsuarioId, d.RecetaId);
+
+        await new ComentarioService(scenario.UnitOfWork).DestroyAsync(comentario.Id);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        Assert.Null(await fresh.ComentarioRepository.ReadAsync(comentario.Id));
+        Assert.NotNull(await fresh.RecetaRepository.ReadAsync(d.RecetaId));
+        Assert.NotNull(await fresh.UsuarioRepository.ReadAsync(d.UsuarioId));
     }
 
     // ---- Dobles de prueba para simular el fallo ----

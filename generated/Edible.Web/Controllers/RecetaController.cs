@@ -290,10 +290,10 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> BusquedaAvanzada(DietaEspecial p_dieta, float p_notaMinima, int p_tiempoMin, int p_tiempoMax, int p_dificultad, Alergenos p_alergenoExcluido, int p_ingrediente_oid)
     {
-    /*PROTECTED REGION ID(RecetaController_BusquedaAvanzada_GET_body) START*/
+    /*PROTECTED REGION ID(RecetaController_BusquedaAvanzada_GET_body) ENABLED START*/
 
-        var result = await _recetaService.BusquedaAvanzadaAsync(p_dieta, p_notaMinima, p_tiempoMin, p_tiempoMax, p_dificultad, p_alergenoExcluido, p_ingrediente_oid);
-        return Ok(result.Select(RecetaAssembler.ToViewModel).ToList());
+        var model = await BuildBusquedaAvanzadaAsync(p_dieta, p_notaMinima, p_tiempoMin, p_tiempoMax, p_dificultad, p_alergenoExcluido, p_ingrediente_oid);
+        return View(model);
     /*PROTECTED REGION END*/
     }
 

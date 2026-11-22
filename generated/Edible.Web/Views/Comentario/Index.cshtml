@@ -5,13 +5,28 @@
     ViewData["Title"] = "Comentario";
 }
 
+@{
+    var esAdmin = User.IsInRole("Administrador");
+    var usuarioActual = User.Identity?.Name;
+}
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success" role="status">@ok</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-body d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 p-4">
         <div>
             <h1 class="h3 mb-1">Comentario</h1>
             <p class="text-body-secondary mb-0">Consulta y gestiona los registros disponibles.</p>
         </div>
-        <a asp-action="Create" class="btn btn-primary">Crear</a>
+        <div class="d-flex flex-column flex-sm-row gap-2">
+            <a asp-action="RecalcularValoracionMedia" class="btn btn-outline-primary">Publicar con valoración</a>
+            <a asp-action="Create" class="btn btn-primary">Crear</a>
+        </div>
     </div>
     <div class="card-body p-0">
     @if (Model.Any())
@@ -52,8 +67,11 @@
                             <td>@Html.DisplayFor(modelItem => item.RecetaLabel)</td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                                @if (esAdmin || item.ComentadorId?.ToString() == usuarioActual)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                                }
                             </td>
                     </tr>
                 }

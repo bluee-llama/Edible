@@ -12,7 +12,7 @@ using Edible.Domain.Enums;
 namespace Edible.Web.Controllers;
 
 /*PROTECTED REGION ID(ComentarioController_class_attributes) ENABLED START*/
-[Authorize]
+[Authorize(Roles = "Usuario,Chef,Administrador")]
 /*PROTECTED REGION END*/
 public partial class ComentarioController : Controller
 {
@@ -65,9 +65,11 @@ public partial class ComentarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
-    /*PROTECTED REGION ID(ComentarioController_Create_GET_body) START*/
+    /*PROTECTED REGION ID(ComentarioController_Create_GET_body) ENABLED START*/
 
         var model = new Edible.Web.ViewModels.ComentarioViewModel();
+        if (!IsAdministrador) model.ComentadorId = CurrentUserId;
+        model.Valoracion = 5;
 
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -80,9 +82,10 @@ public partial class ComentarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.ComentarioViewModel model)
     {
-    /*PROTECTED REGION ID(ComentarioController_Create_POST_body) START*/
+    /*PROTECTED REGION ID(ComentarioController_Create_POST_body) ENABLED START*/
 
-        ModelState.Remove(nameof(model.Contenido)); // Campo fuera del contrato Create de Application.
+        // Un usuario no administrador solo puede comentar en su propio nombre.
+        if (!IsAdministrador) model.ComentadorId = CurrentUserId;
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.ComentarioService(unitOfWork);
 
@@ -116,6 +119,7 @@ public partial class ComentarioController : Controller
             var entity = await service.NewAsync(model.User_id, model.Titulo, model.Valoracion, model.ComentadorId.GetValueOrDefault(), model.RecetaId.GetValueOrDefault());
 
             await service.ApplyComentarioRelationsAsync(entity, p_comentador_id: model.ComentadorId, p_receta_id: model.RecetaId);
+            entity.Contenido = string.IsNullOrWhiteSpace(model.Contenido) ? null : model.Contenido.Trim();
             if (true && model.ImagenUpload is not null)
             {
                 var stored = await _files.SaveAsync(model.ImagenUpload, "Comentario", "Imagen", entity.Id, cancellationToken);
@@ -141,7 +145,7 @@ public partial class ComentarioController : Controller
             return View(model);
         }
 
-
+        TempData["Success"] = "Comentario publicado correctamente.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -151,10 +155,11 @@ public partial class ComentarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id)
     {
-    /*PROTECTED REGION ID(ComentarioController_Edit_GET_body) START*/
+    /*PROTECTED REGION ID(ComentarioController_Edit_GET_body) ENABLED START*/
 
         var entity = await _comentarioService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!CanModify(entity)) return Forbid();
         var model = ComentarioAssembler.ToViewModel(entity);
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -167,14 +172,16 @@ public partial class ComentarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.ComentarioViewModel model)
     {
-    /*PROTECTED REGION ID(ComentarioController_Edit_POST_body) START*/
+    /*PROTECTED REGION ID(ComentarioController_Edit_POST_body) ENABLED START*/
 
-        ModelState.Remove(nameof(model.Contenido)); // Campo fuera del contrato Edit de Application.
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.ComentarioService(unitOfWork);
 
         var entity = await service.ReadOIDComentarioDefaultAsync(id);
         if (entity is null) return NotFound();
+        if (!CanModify(entity)) return Forbid();
+        // El autor de un comentario no cambia al editarlo (salvo moderación de un administrador).
+        if (!IsAdministrador) model.ComentadorId = entity.Comentador?.Id;
         var previousImagen = entity.Imagen;
         model.Imagen = previousImagen;
 
@@ -205,6 +212,7 @@ public partial class ComentarioController : Controller
             await service.ModifyAsync(id, model.User_id, model.Titulo, model.Valoracion);
             entity = await service.ReadOIDComentarioDefaultAsync(id) ?? throw new InvalidOperationException("Entity disappeared during update.");
             await service.ApplyComentarioRelationsAsync(entity, p_comentador_id: model.ComentadorId, p_receta_id: model.RecetaId);
+            entity.Contenido = string.IsNullOrWhiteSpace(model.Contenido) ? null : model.Contenido.Trim();
             if (true && model.ImagenUpload is not null)
             {
                 var stored = await _files.SaveAsync(model.ImagenUpload, "Comentario", "Imagen", entity.Id, cancellationToken);
@@ -231,6 +239,7 @@ public partial class ComentarioController : Controller
         }
         if (true && model.ImagenUpload is not null) await _files.DeleteReplacedAsync(previousImagen);
 
+        TempData["Success"] = "Comentario actualizado correctamente.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -240,10 +249,11 @@ public partial class ComentarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Delete(int id)
     {
-    /*PROTECTED REGION ID(ComentarioController_Delete_GET_body) START*/
+    /*PROTECTED REGION ID(ComentarioController_Delete_GET_body) ENABLED START*/
 
         var entity = await _comentarioService.ReadOIDComentarioDefaultAsync(id);
         if (entity is null) return NotFound();
+        if (!CanModify(entity)) return Forbid();
         return View(ComentarioAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -255,7 +265,7 @@ public partial class ComentarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-    /*PROTECTED REGION ID(ComentarioController_DeleteConfirmed_POST_body) START*/
+    /*PROTECTED REGION ID(ComentarioController_DeleteConfirmed_POST_body) ENABLED START*/
 
         if (!ModelState.IsValid) return View("Delete", new Edible.Web.ViewModels.ComentarioViewModel());
         await using var unitOfWork = _fileUnitOfWorkFactory.Create();
@@ -263,6 +273,7 @@ public partial class ComentarioController : Controller
         await unitOfWork.BeginTransactionAsync("MVC.Comentario.Delete");
         var entity = await fileService.ReadOIDComentarioDefaultAsync(id);
         if (entity is null) { await unitOfWork.RollbackAsync(); return NotFound(); }
+        if (!CanModify(entity)) { await unitOfWork.RollbackAsync(); return Forbid(); }
         try
         {
             await fileService.DestroyAsync(id);
@@ -276,6 +287,7 @@ public partial class ComentarioController : Controller
             return View("Delete", ComentarioAssembler.ToViewModel(entity));
         }
         await _files.DeleteEntityFileAsync(entity.Imagen);
+        TempData["Success"] = "Comentario eliminado.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }

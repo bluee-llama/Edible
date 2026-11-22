@@ -4,7 +4,7 @@ namespace Edible.Web.ViewModels;
 
 public sealed class ComentarioViewModel : IValidatableObject
 {
-    /*PROTECTED REGION ID(ComentarioViewModel_generated) START*/
+    /*PROTECTED REGION ID(ComentarioViewModel_generated) ENABLED START*/
     [Key]
     public int Id { get; set; }
 
@@ -24,9 +24,11 @@ public sealed class ComentarioViewModel : IValidatableObject
     [Required(ErrorMessage = "Debes indicar {0}.")]
     public string Titulo { get; set; } = string.Empty;
 
-    [UIHint("HariaReadOnly:Create,Edit")]
+    [StringLength(2000, ErrorMessage = "El contenido no puede superar los {1} caracteres.")]
+    [DataType(DataType.MultilineText)]
     public string? Contenido { get; set; }
 
+    [Range(1, 5, ErrorMessage = "La valoración debe estar entre {1} y {2}.")]
     public int Valoracion { get; set; }
 
     [Required(ErrorMessage = "Debes indicar {0}.")]

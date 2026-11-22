@@ -121,4 +121,77 @@ public class BusquedaAvanzadaTests
         await PrepararAsync(s.UnitOfWork);
         Assert.Empty(await BuscarAsync(s.UnitOfWork, dificultad: 3));
     }
+
+    // ---- Casos que la pantalla web puede enviar ----
+
+    [Fact]
+    public async Task BusquedaAvanzada_SoloTiempoMaximo_SinMinimo()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Equal(new[] { "Ensalada", "Pasta" }, await BuscarAsync(s.UnitOfWork, tiempoMax: 25));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_SoloTiempoMinimo_TiempoMaximoCeroSignificaSinLimite()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Equal(new[] { "Pizza" }, await BuscarAsync(s.UnitOfWork, tiempoMin: 30, tiempoMax: 0));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_TiempoMinimoMayorQueMaximo_DevuelveVacio()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Empty(await BuscarAsync(s.UnitOfWork, tiempoMin: 30, tiempoMax: 20));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_IngredienteInexistente_DevuelveVacioNoNull()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Empty(await BuscarAsync(s.UnitOfWork, ingredienteOid: 99999));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_IngredienteQueEstaEnTodas_DevuelveTodas()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        var d = await PrepararAsync(s.UnitOfWork);
+        Assert.Equal(new[] { "Ensalada", "Pasta", "Pizza" }, await BuscarAsync(s.UnitOfWork, ingredienteOid: d.TomateId));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_DietaYAlergenoExcluido_Combinados()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Equal(new[] { "Ensalada" }, await BuscarAsync(s.UnitOfWork, dieta: DietaEspecial.vegana, alergeno: Alergenos.gluten));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_DificultadYNotaMinima_Combinadas()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Equal(new[] { "Pasta", "Pizza" }, await BuscarAsync(s.UnitOfWork, dificultad: 2, nota: 4.0f));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_AlergenoQueNingunaRecetaContiene_NoExcluyeNada()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        await PrepararAsync(s.UnitOfWork);
+        Assert.Equal(new[] { "Ensalada", "Pasta", "Pizza" }, await BuscarAsync(s.UnitOfWork, alergeno: Alergenos.marisco));
+    }
+
+    [Fact]
+    public async Task BusquedaAvanzada_SinRecetas_DevuelveListaVacia()
+    {
+        await using var s = await TestFixture.CreateScenarioAsync();
+        Assert.Empty(await BuscarAsync(s.UnitOfWork));
+    }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Edible.Application.Services;
 using Edible.Application.UseCases.Comentario;
 using Edible.Application.UseCases.Nevera;
@@ -154,6 +154,68 @@ public static class SeedData
             // Ensure(await pasoService.ReadOIDPasoDefaultAsync(samplePaso.Id) is null, "Paso seed cleanup completed.");
             /*PROTECTED REGION ID(initializeDataMethod) ENABLED START*/
             // Add custom seed data here.
+
+            // ---- Comunidad (Rodrigo): comentarios iniciales con valoraciones variadas ----
+            // Debe ejecutarse DESPUÉS del seed de usuarios y recetas del resto del equipo (mantener este bloque
+            // el último de la región al integrar). No falla si todavía no hay usuarios o recetas.
+            {
+                var cmUsuarios = (await unitOfWork.UsuarioRepository.ReadAllAsync()).OrderBy(u => u.Id).ToList();
+                var cmRecetas = (await unitOfWork.RecetaRepository.ReadAllAsync()).OrderBy(r => r.Id).ToList();
+                // Se ignoran las recetas de ejemplo generadas por HARIA: su comentario de muestra tiene valoración 10
+                // (fuera del rango 1-5) y haría fallar la postcondición de la media. Solo se usan recetas reales.
+                cmRecetas = cmRecetas.Where(r => !r.Nombre.StartsWith("Sample ", StringComparison.Ordinal)).Take(5).ToList();
+
+                if (cmUsuarios.Count == 0 || cmRecetas.Count == 0)
+                {
+                    Console.WriteLine("[SKIP] No hay recetas reales (o usuarios): no se siembran comentarios iniciales.");
+                }
+                else
+                {
+                    var cmUseCase = new ComentarioUseCase(unitOfWork);
+                    var cmService = new ComentarioService(unitOfWork);
+                    var cmTextos = new (string Titulo, string Contenido)[]
+                    {
+                        ("Deliciosa", "Salió perfecta a la primera, la repetiré el fin de semana."),
+                        ("Muy fácil de seguir", "Los pasos están claros y los tiempos son justos."),
+                        ("Correcta", "Está bien, aunque le añadiría un poco más de sazón."),
+                        ("Para repetir", "Gustó a toda la familia. Los ingredientes son fáciles de encontrar."),
+                        ("Regular", "Se me quedó algo seca, quizá me pasé de tiempo en el horno."),
+                        ("Buena para el día a día", "Rápida y con lo que suele haber en la nevera."),
+                        ("No me convenció", "La textura no era la esperada y el resultado fue flojo."),
+                        ("Una joya", "Receta de las que se guardan. Presentación muy vistosa.")
+                    };
+                    // Mezcla de notas altas, medias y bajas para que las medias resultantes sean distintas.
+                    var cmValoraciones = new[] { 5, 4, 3, 5, 2, 4, 1, 5 };
+                    var cmIdentificador = 100;
+
+                    for (var r = 0; r < cmRecetas.Count; r++)
+                    {
+                        for (var k = 0; k < 3; k++)
+                        {
+                            var cmIndice = r * 3 + k;
+                            var cmAutor = cmUsuarios[(r + k) % cmUsuarios.Count];
+                            var cmValoracion = cmValoraciones[cmIndice % cmValoraciones.Length];
+                            var cmTexto = cmTextos[cmIndice % cmTextos.Length];
+
+                            // CustomTransaction: crea el comentario y recalcula Receta.ValoracionMedia.
+                            var cmComentario = await cmUseCase.RecalcularValoracionMediaAsync(
+                                cmIdentificador++, cmTexto.Titulo, cmValoracion, cmAutor.Id, cmRecetas[r].Id);
+                            // Contenido no forma parte del contrato de New: se completa y se guarda aparte.
+                            cmComentario.Contenido = cmTexto.Contenido;
+                            await cmService.ModifierComentarioDefaultAsync(cmComentario);
+                        }
+                    }
+
+                    var cmSembrados = await cmService.ReadAllAsync();
+                    Ensure(cmSembrados.Count >= cmRecetas.Count * 3, "Comentarios iniciales sembrados.");
+                    foreach (var cmReceta in cmRecetas)
+                    {
+                        var cmRecetaLeida = await unitOfWork.RecetaRepository.ReadAsync(cmReceta.Id);
+                        Ensure(cmRecetaLeida is not null && cmRecetaLeida.ValoracionMedia >= 1f && cmRecetaLeida.ValoracionMedia <= 5f,
+                            $"Receta '{cmReceta.Nombre}' tiene una valoración media entre 1 y 5.");
+                    }
+                }
+            }
             /*PROTECTED REGION END*/
         }
         catch (Exception ex)

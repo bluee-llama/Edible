@@ -11,7 +11,10 @@
             <h1 class="h3 mb-1">Receta</h1>
             <p class="text-body-secondary mb-0">Consulta y gestiona los registros disponibles.</p>
         </div>
-        <a asp-action="Create" class="btn btn-primary">Crear</a>
+        <div class="d-flex flex-column flex-sm-row gap-2">
+            <a asp-action="BusquedaAvanzada" class="btn btn-outline-primary">Búsqueda avanzada</a>
+            <a asp-action="Create" class="btn btn-primary">Crear</a>
+        </div>
     </div>
     <div class="card-body p-0">
     @if (Model.Any())
