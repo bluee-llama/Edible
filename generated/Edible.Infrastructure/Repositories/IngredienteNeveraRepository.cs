@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
@@ -107,7 +107,7 @@ public sealed class IngredienteNeveraRepository : RepositoryBase<IngredienteNeve
     {
         try
         {
-            return await DbContext.Set<IngredienteNevera>()
+            return await DbContext.Set<IngredienteNevera>().Include(entity => entity.IngredienteCatalogo).Include(entity => entity.Nevera)
                 .Where(entity => entity.Nevera.Id == p_nevera_oid && (p_tipo == TipoIngrediente.ninguno || entity.IngredienteCatalogo.Tipo == p_tipo) && (p_estado == EstadoCaducidad.ninguno || (p_estado == EstadoCaducidad.perfecto && entity.FechaCaducidad > p_fechaLimiteCerca) || (p_estado == EstadoCaducidad.cerca && entity.FechaCaducidad <= p_fechaLimiteCerca && entity.FechaCaducidad >= p_fechaActual) || (p_estado == EstadoCaducidad.caducado && entity.FechaCaducidad < p_fechaActual)))
                 .ToListAsync();
         }

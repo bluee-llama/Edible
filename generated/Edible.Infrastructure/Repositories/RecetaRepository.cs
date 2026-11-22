@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Edible.Application.Abstractions;
 using Edible.Domain.Entities;
@@ -104,13 +104,26 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
 
     private static Task<bool> EntityExistsAsync(DbSet<Receta> set, Receta entity) =>
         set.AsNoTracking().AnyAsync(existing => existing.Id == entity.Id);
+
     public async Task<IReadOnlyList<Receta>> BusquedaAvanzadaAsync(DietaEspecial p_dieta, float p_notaMinima, int p_tiempoMin, int p_tiempoMax, int p_dificultad, Alergenos p_alergenoExcluido, int p_ingrediente_oid)
     {
         try
         {
-            return await DbContext.Set<Receta>()
-                .Where(entity => (p_dieta == DietaEspecial.ninguna || entity.DietaEspecial == p_dieta) && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && (p_tiempoMax <= 0 || entity.TiempoRealizacion <= p_tiempoMax) && (p_dificultad <= 0 || entity.Dificultad == p_dificultad) && (p_alergenoExcluido == Alergenos.ninguno || !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido))) && (p_ingrediente_oid <= 0 || entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid)))
+            var results = await DbContext.Set<Receta>()
+                .Include(entity => entity.Chef)
+                .Include(entity => entity.Lineas)
+                    .ThenInclude(l => l.IngredienteCatalogo)
+                .Where(entity => (p_dieta == DietaEspecial.ninguna || entity.DietaEspecial == p_dieta) && entity.ValoracionMedia >= p_notaMinima && entity.TiempoRealizacion >= p_tiempoMin && (p_tiempoMax <= 0 || entity.TiempoRealizacion <= p_tiempoMax) && (p_dificultad <= 0 || entity.Dificultad == p_dificultad) && (p_ingrediente_oid <= 0 || entity.Lineas.Any(l => l.IngredienteCatalogo.Id == p_ingrediente_oid)))
                 .ToListAsync();
+
+            if (p_alergenoExcluido != Alergenos.ninguno)
+            {
+                results = results
+                    .Where(entity => !entity.Lineas.Any(l => l.IngredienteCatalogo.Alergenos.Contains(p_alergenoExcluido)))
+                    .ToList();
+            }
+
+            return results;
         }
         catch (DataException)
         {
@@ -127,8 +140,10 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
     {
         try
         {
+            var filtro = (p_nombre ?? string.Empty).Trim().ToLower();
             return await DbContext.Set<Receta>()
-                .Where(entity => entity.Nombre == p_nombre)
+                .Include(entity => entity.Chef)
+                .Where(entity => entity.Nombre.ToLower().Contains(filtro))
                 .ToListAsync();
         }
         catch (DataException)
@@ -147,6 +162,7 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
         try
         {
             return await DbContext.Set<Receta>()
+                .Include(entity => entity.Chef)
                 .Where(entity => entity.Lineas.All(linea => linea.IngredienteCatalogo.IngredienteEnNevera.Any(nev => nev.Nevera.Id == p_nevera_oid && nev.Cantidad >= linea.CantidadNecesaria)))
                 .ToListAsync();
         }

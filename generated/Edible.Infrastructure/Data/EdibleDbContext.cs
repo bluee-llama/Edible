@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Edible.Domain.Entities;
@@ -319,7 +319,7 @@ public sealed class EdibleDbContext : DbContext
             .HasMany(e => e.IngredientesDisponibles)
             .WithOne(e => e.Receta)
             .HasForeignKey("RecetaId")
-            .IsRequired();
+            .IsRequired(false);
 
         modelBuilder.Entity<Usuario>()
             .HasMany(e => e.RecetasSugeridas)
