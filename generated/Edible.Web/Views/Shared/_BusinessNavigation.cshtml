@@ -126,5 +126,50 @@
 </section>
 
 @* PROTECTED REGION ID(HariaBusinessNavigation_manual) ENABLED START *@
-@* Añade aquí tus enlaces y condiciones de visibilidad. El menú no autoriza el acceso. *@
+@* Navegación por rol (Anónimo / Usuario / Chef / Administrador). El menú NO autoriza el acceso:
+   la seguridad real está en los [Authorize] de cada controlador. *@
+@{
+    var navAutenticado = User.Identity?.IsAuthenticated == true;
+    var navEsChef = User.IsInRole("Chef");
+    var navEsAdmin = User.IsInRole("Administrador");
+
+    var entidadesVisibles = new List<string>();
+    if (navAutenticado)
+    {
+        entidadesVisibles.AddRange(new[] { "Nevera", "ListaCompra", "IngredienteNevera", "IngredienteCompra", "Receta", "Comentario" });
+        if (navEsChef || navEsAdmin) entidadesVisibles.AddRange(new[] { "Ingrediente", "LineaReceta", "Paso" });
+        if (navEsAdmin) entidadesVisibles.AddRange(new[] { "Usuario", "Chef" });
+    }
+}
+@if (!navAutenticado)
+{
+    <div class="haria-home-empty mt-4">
+        <h2 class="h5">Inicia sesión para usar Edible</h2>
+        <p class="mb-3">Gestiona tu nevera, tu lista de la compra y tus recetas.</p>
+        <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Iniciar sesión</a>
+        <a class="btn btn-outline-primary" asp-controller="Usuario" asp-action="Register">Crear una cuenta</a>
+    </div>
+}
+else
+{
+    <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
+        <span class="text-body-secondary small">Sesión iniciada como #@User.Identity!.Name
+            (@(navEsAdmin ? "Administrador" : navEsChef ? "Chef" : "Usuario")).</span>
+        <a class="btn btn-sm btn-outline-primary" asp-controller="Usuario" asp-action="Perfil">Mi perfil</a>
+    </div>
+}
+<script>
+    (function () {
+        var permitidas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(entidadesVisibles));
+        var tarjetas = document.querySelectorAll('.haria-home-card');
+        var visibles = 0;
+        tarjetas.forEach(function (tarjeta) {
+            var titulo = tarjeta.querySelector('.haria-home-card-title');
+            if (titulo && permitidas.indexOf(titulo.textContent.trim()) === -1) { tarjeta.remove(); }
+            else { visibles++; }
+        });
+        var total = document.querySelector('.haria-home-total');
+        if (total) { total.textContent = visibles + (visibles === 1 ? ' entidad' : ' entidades'); }
+    })();
+</script>
 @* PROTECTED REGION END *@

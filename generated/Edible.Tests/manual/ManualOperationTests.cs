@@ -93,6 +93,8 @@ public sealed class ManualOperationTests
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var usuarioService = new UsuarioService(scenario.UnitOfWork);
         var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioPublico");
+        usuario.Publico = false;
+        await scenario.UnitOfWork.UsuarioRepository.SaveAsync(usuario);
         int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
@@ -111,8 +113,17 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPublico:assert) ENABLED START*/
-        var usuarioBD = await scenario.UnitOfWork.UsuarioRepository.ReadAsync(usuarioId);
-        Assert.NotNull(usuarioBD);
+        await using (var fresh = scenario.CreateFreshUnitOfWork())
+        {
+            var usuarioBD = await fresh.UsuarioRepository.ReadAsync(usuarioId);
+            Assert.NotNull(usuarioBD);
+            Assert.True(usuarioBD!.Publico);
+        }
+
+        // Ya es público: una segunda llamada debe rechazarse con ModelException.
+        await Assert.ThrowsAsync<ModelException>(() => service!.PonerPublicoAsync(usuarioId));
+        // Un usuario inexistente también se rechaza.
+        await Assert.ThrowsAsync<ModelException>(() => service!.PonerPublicoAsync(usuarioId + 9999));
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
@@ -125,6 +136,7 @@ public sealed class ManualOperationTests
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var usuarioService = new UsuarioService(scenario.UnitOfWork);
         var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioPrivado");
+        Assert.True(usuario.Publico);
         int usuarioId = usuario.Id;
         /*PROTECTED REGION END*/
 
@@ -143,8 +155,17 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Usuario:ponerPrivado:assert) ENABLED START*/
-        var usuarioBD = await scenario.UnitOfWork.UsuarioRepository.ReadAsync(usuarioId);
-        Assert.NotNull(usuarioBD);
+        await using (var fresh = scenario.CreateFreshUnitOfWork())
+        {
+            var usuarioBD = await fresh.UsuarioRepository.ReadAsync(usuarioId);
+            Assert.NotNull(usuarioBD);
+            Assert.False(usuarioBD!.Publico);
+        }
+
+        // Ya es privado: una segunda llamada debe rechazarse con ModelException.
+        await Assert.ThrowsAsync<ModelException>(() => service!.PonerPrivadoAsync(usuarioId));
+        // Un usuario inexistente también se rechaza.
+        await Assert.ThrowsAsync<ModelException>(() => service!.PonerPrivadoAsync(usuarioId + 9999));
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/

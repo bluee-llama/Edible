@@ -155,6 +155,87 @@ public static class SeedData
             /*PROTECTED REGION ID(initializeDataMethod) ENABLED START*/
             // Add custom seed data here.
 
+            // ---- Seguridad y base (Hugo): usuarios de prueba por rol + catálogo base de Ingrediente ----
+            // Debe ir el PRIMERO de la región: los bloques de Nevera/Lista (Àngel), Recetas y Comentarios (Rodrigo)
+            // reutilizan estos usuarios e ingredientes (los buscan por nombre antes de crearlos).
+            // Login: la web inicia sesión con el Id numérico + contraseña (se imprimen al final del bloque).
+            //   Usuario        -> rol "Usuario"
+            //   Chef (x2)      -> roles "Usuario" + "Chef"   (herencia Chef : Usuario)
+            //   admin          -> roles "Usuario" + "Administrador" (nombre reservado "admin")
+            {
+                // Catálogo base. Las listas de DietaEspecial indican las dietas con las que el ingrediente es compatible.
+                var hgCatalogo = new (string Nombre, TipoIngrediente Tipo, int Kcal, float Prot, float Carb, float Grasa, float Racion, Alergenos[] Alergenos, DietaEspecial[] Dietas)[]
+                {
+                    ("Leche Entera", TipoIngrediente.leche_y_productos_lacteos, 64, 3.3f, 4.8f, 3.6f, 200f, new[] { Alergenos.lactosa }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten }),
+                    ("Yogur Natural", TipoIngrediente.leche_y_productos_lacteos, 61, 3.5f, 4.7f, 3.3f, 125f, new[] { Alergenos.lactosa }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten }),
+                    ("Queso Mozzarella", TipoIngrediente.leche_y_productos_lacteos, 280, 22f, 2.2f, 22f, 50f, new[] { Alergenos.lactosa }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten }),
+                    ("Huevo", TipoIngrediente.carne_y_productos_carnicos, 143, 12.6f, 0.7f, 9.5f, 60f, new[] { Alergenos.huevo }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa }),
+                    ("Pechuga de Pollo", TipoIngrediente.carne_y_productos_carnicos, 165, 31f, 0f, 3.6f, 150f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.sinGluten, DietaEspecial.sinLactosa }),
+                    ("Salmón", TipoIngrediente.pescados_mariscos_anfibios_reptiles_e_invertebrados, 208, 20f, 0f, 13f, 150f, new[] { Alergenos.pescado }, new[] { DietaEspecial.sinGluten, DietaEspecial.sinLactosa }),
+                    ("Manzana Fuji", TipoIngrediente.frutas_y_productos_a_base_de_fruta, 52, 0.3f, 14f, 0.2f, 180f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Plátano", TipoIngrediente.frutas_y_productos_a_base_de_fruta, 89, 1.1f, 23f, 0.3f, 120f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Tomate", TipoIngrediente.hortalizas_verduras_y_sus_productos, 18, 0.9f, 3.9f, 0.2f, 150f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Cebolla", TipoIngrediente.hortalizas_verduras_y_sus_productos, 40, 1.1f, 9.3f, 0.1f, 100f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Patata", TipoIngrediente.hortalizas_verduras_y_sus_productos, 77, 2f, 17f, 0.1f, 200f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Zanahoria", TipoIngrediente.hortalizas_verduras_y_sus_productos, 41, 0.9f, 10f, 0.2f, 100f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Arroz Redondo", TipoIngrediente.cereales_y_productos_a_base_de_cereales, 130, 2.7f, 28f, 0.3f, 80f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Pasta de Trigo", TipoIngrediente.cereales_y_productos_a_base_de_cereales, 158, 5.8f, 31f, 0.9f, 80f, new[] { Alergenos.gluten }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Harina de Trigo", TipoIngrediente.cereales_y_productos_a_base_de_cereales, 364, 10f, 76f, 1f, 100f, new[] { Alergenos.gluten }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Garbanzos", TipoIngrediente.legumbres_frutos_secos_semillas_oleaginosas_y_especias, 164, 8.9f, 27f, 2.6f, 80f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Almendras", TipoIngrediente.legumbres_frutos_secos_semillas_oleaginosas_y_especias, 579, 21f, 22f, 50f, 30f, new[] { Alergenos.frutos_secos }, new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Aceite de Oliva", TipoIngrediente.grasas_y_aceites_vegetales_y_animales, 884, 0f, 0f, 100f, 15f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Sal", TipoIngrediente.sazonadores_salsas_y_condimentos, 0, 0f, 0f, 0f, 5f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                    ("Azúcar", TipoIngrediente.azucar_confiteria_y_postres_dulces_a_base_de_agua, 387, 0f, 100f, 0f, 10f, System.Array.Empty<Alergenos>(), new[] { DietaEspecial.vegetariana, DietaEspecial.sinGluten, DietaEspecial.sinLactosa, DietaEspecial.vegana }),
+                };
+
+                var hgExistentes = (await unitOfWork.IngredienteRepository.ReadAllAsync()).ToList();
+                var hgIngredientesNuevos = 0;
+                foreach (var hgItem in hgCatalogo)
+                {
+                    if (hgExistentes.Any(i => string.Equals(i.Nombre, hgItem.Nombre, StringComparison.OrdinalIgnoreCase))) continue;
+                    var hgCreado = await ingredienteService.NewAsync(hgItem.Nombre, hgItem.Tipo, hgItem.Kcal, hgItem.Prot, hgItem.Carb, hgItem.Grasa, hgItem.Racion,
+                        hgItem.Alergenos.ToList(), hgItem.Dietas.ToList());
+                    hgExistentes.Add(hgCreado);
+                    hgIngredientesNuevos++;
+                }
+                Ensure(hgIngredientesNuevos > 0 || hgExistentes.Count >= hgCatalogo.Length, "Catálogo base de Ingrediente sembrado.");
+
+                // Usuarios por rol. Orden deliberado: primero Usuario y Chef (los bloques de stock/comentarios
+                // toman los primeros usuarios reales por Id) y el administrador al final.
+                var hgUsuariosExistentes = (await unitOfWork.UsuarioRepository.ReadAllAsync()).ToList();
+                bool HgExiste(string nombre) => hgUsuariosExistentes.Any(u => string.Equals(u.Name, nombre, StringComparison.OrdinalIgnoreCase));
+                var hgCredenciales = new List<string>();
+
+                async Task HgCrearUsuarioAsync(string nombre, string password, bool publico, DietaEspecial dieta, string rol)
+                {
+                    if (HgExiste(nombre)) return;
+                    var creado = await usuarioService.NewAsync(nombre, password, publico, dieta, new Nevera(), new ListaCompra());
+                    Ensure(!string.IsNullOrWhiteSpace(await usuarioService.LoginAsync(creado.Id, password)), $"Login correcto para el usuario '{nombre}'.");
+                    Ensure(creado.Nevera is not null && creado.ListaCompra is not null, $"'{nombre}' nace con su Nevera y su ListaCompra.");
+                    hgUsuariosExistentes.Add(creado);
+                    hgCredenciales.Add($"  Id={creado.Id,-3} nombre={nombre,-10} contraseña={password,-12} rol={rol}");
+                }
+
+                async Task HgCrearChefAsync(string nombre, string password, bool publico, DietaEspecial dieta)
+                {
+                    if (HgExiste(nombre)) return;
+                    var creado = await chefService.NewAsync(nombre, password, publico, dieta, new Nevera(), new ListaCompra());
+                    Ensure(await unitOfWork.UsuarioRepository.ReadAsync(creado.Id) is Chef, $"El Chef '{nombre}' se lee como Usuario y sigue siendo un Chef (herencia).");
+                    Ensure(creado.Nevera is not null && creado.ListaCompra is not null, $"El Chef '{nombre}' nace con su Nevera y su ListaCompra.");
+                    hgUsuariosExistentes.Add(creado);
+                    hgCredenciales.Add($"  Id={creado.Id,-3} nombre={nombre,-10} contraseña={password,-12} rol=Usuario + Chef");
+                }
+
+                await HgCrearUsuarioAsync("marta", "Usuario123!", true, DietaEspecial.vegetariana, "Usuario");
+                await HgCrearChefAsync("chef_pepe", "Chef123!", true, DietaEspecial.ninguna);
+                await HgCrearChefAsync("chef_ana", "Chef123!", false, DietaEspecial.sinGluten);
+                await HgCrearUsuarioAsync("admin", "Admin123!", false, DietaEspecial.ninguna, "Usuario + Administrador");
+
+                Console.WriteLine("---- Credenciales de prueba (la web inicia sesión con el Id) ----");
+                foreach (var hgLinea in hgCredenciales) Console.WriteLine(hgLinea);
+                Console.WriteLine("-----------------------------------------------------------------");
+            }
+
             // ---- Nevera y Lista de la Compra (Àngel): stock con los 3 estados de caducidad e ítems de compra ----
             {
                 var nvTodosUsuarios = (await unitOfWork.UsuarioRepository.ReadAllAsync())

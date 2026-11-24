@@ -13,7 +13,7 @@ using Edible.Domain.Enums;
 namespace Edible.Web.Controllers;
 
 /*PROTECTED REGION ID(UsuarioController_class_attributes) ENABLED START*/
-
+[Authorize(Roles = "Usuario,Chef,Administrador")]
 /*PROTECTED REGION END*/
 public partial class UsuarioController : Controller
 {
@@ -31,7 +31,8 @@ public partial class UsuarioController : Controller
     }
     /*PROTECTED REGION END*/
     [HttpGet]
-    /*PROTECTED REGION ID(UsuarioController_Index_GET_attributes) START*/
+    /*PROTECTED REGION ID(UsuarioController_Index_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Index()
     {
@@ -47,7 +48,10 @@ public partial class UsuarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Details(int id)
     {
-    /*PROTECTED REGION ID(UsuarioController_Details_GET_body) START*/
+    /*PROTECTED REGION ID(UsuarioController_Details_GET_body) ENABLED START*/
+
+        // Un usuario solo puede ver su propio perfil; el Administrador puede ver cualquiera.
+        if (!User.CanManageUsuario(id)) return Forbid();
 
         var entity = await _usuarioService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
@@ -56,7 +60,8 @@ public partial class UsuarioController : Controller
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(UsuarioController_Create_GET_attributes) START*/
+    /*PROTECTED REGION ID(UsuarioController_Create_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
@@ -71,48 +76,33 @@ public partial class UsuarioController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(UsuarioController_Create_POST_attributes) START*/
+    /*PROTECTED REGION ID(UsuarioController_Create_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.UsuarioViewModel model)
     {
-    /*PROTECTED REGION ID(UsuarioController_Create_POST_body) START*/
+    /*PROTECTED REGION ID(UsuarioController_Create_POST_body) ENABLED START*/
 
-
-        await using var unitOfWork = _formUnitOfWorkFactory.Create();
-        var service = new global::Edible.Application.Services.UsuarioService(unitOfWork);
-
-
-
-
-
-        await LoadFormOptionsAsync(model, unitOfWork);
-        if (model.NeveraId is int selectedNevera &&
-            !model.NeveraOptions.Any(option => option.Value == Convert.ToString(selectedNevera, System.Globalization.CultureInfo.InvariantCulture)))
-            ModelState.AddModelError("NeveraId", "Selecciona un registro existente de Nevera.");
-        if (model.NeveraId is null) ModelState.AddModelError("NeveraId", "Debes seleccionar una opción.");
-        if (model.ListaCompraId is int selectedListaCompra &&
-            !model.ListaCompraOptions.Any(option => option.Value == Convert.ToString(selectedListaCompra, System.Globalization.CultureInfo.InvariantCulture)))
-            ModelState.AddModelError("ListaCompraId", "Selecciona un registro existente de ListaCompra.");
-        if (model.ListaCompraId is null) ModelState.AddModelError("ListaCompraId", "Debes seleccionar una opción.");
-
+        // La Nevera y la ListaCompra se crean automáticamente junto con el Usuario:
+        // no se eligen en el formulario, así que se ignora su validación [Required].
+        ModelState.Remove(nameof(model.NeveraId));
+        ModelState.Remove(nameof(model.ListaCompraId));
 
         if (string.IsNullOrEmpty(model.Password)) ModelState.AddModelError(nameof(model.Password), "Debes indicar una contraseña.");
+        // El nombre del administrador está reservado: evita que alguien se registre como "admin".
+        if (HariaWebAuthentication.IsReservedAdministratorName(model.Name))
+            ModelState.AddModelError(nameof(model.Name), "Ese nombre está reservado. Elige otro.");
 
         if (!ModelState.IsValid) return View(model);
 
+        await using var unitOfWork = _formUnitOfWorkFactory.Create();
+        var service = new global::Edible.Application.Services.UsuarioService(unitOfWork);
 
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.Usuario.Create");
 
-            var argumentNevera = await unitOfWork.NeveraRepository.ReadAsync(model.NeveraId.GetValueOrDefault()) ?? throw new InvalidOperationException("Nevera not found.");
-            var argumentListaCompra = await unitOfWork.ListaCompraRepository.ReadAsync(model.ListaCompraId.GetValueOrDefault()) ?? throw new InvalidOperationException("ListaCompra not found.");
-            var entity = await service.NewAsync(model.Name, model.Password!, model.Publico, model.Dieta, argumentNevera, argumentListaCompra);
-
-            await service.ApplyUsuarioRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId);
-
-            await service.ModifierUsuarioDefaultAsync(entity);
-
+            await service.NewAsync(model.Name, model.Password!, model.Publico, model.Dieta, new Nevera(), new ListaCompra());
 
             await unitOfWork.CommitAsync();
         }
@@ -125,7 +115,7 @@ public partial class UsuarioController : Controller
             return View(model);
         }
 
-
+        TempData["Success"] = "Usuario creado correctamente (con su Nevera y su Lista de la compra).";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -152,43 +142,29 @@ public partial class UsuarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Register(Edible.Web.ViewModels.UsuarioViewModel model)
     {
-    /*PROTECTED REGION ID(UsuarioController_Register_POST_body) START*/
+    /*PROTECTED REGION ID(UsuarioController_Register_POST_body) ENABLED START*/
 
+        // La Nevera y la ListaCompra se crean automáticamente junto con el Usuario:
+        // no se eligen en el formulario, así que se ignora su validación [Required].
+        ModelState.Remove(nameof(model.NeveraId));
+        ModelState.Remove(nameof(model.ListaCompraId));
+
+        if (string.IsNullOrEmpty(model.Password)) ModelState.AddModelError(nameof(model.Password), "Debes indicar una contraseña.");
+        // El nombre del administrador está reservado: evita que alguien se registre como "admin".
+        if (HariaWebAuthentication.IsReservedAdministratorName(model.Name))
+            ModelState.AddModelError(nameof(model.Name), "Ese nombre está reservado. Elige otro.");
+
+        if (!ModelState.IsValid) return View(model);
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.UsuarioService(unitOfWork);
-
-
-
-
-
-        await LoadFormOptionsAsync(model, unitOfWork);
-        if (model.NeveraId is int selectedNevera &&
-            !model.NeveraOptions.Any(option => option.Value == Convert.ToString(selectedNevera, System.Globalization.CultureInfo.InvariantCulture)))
-            ModelState.AddModelError("NeveraId", "Selecciona un registro existente de Nevera.");
-        if (model.NeveraId is null) ModelState.AddModelError("NeveraId", "Debes seleccionar una opción.");
-        if (model.ListaCompraId is int selectedListaCompra &&
-            !model.ListaCompraOptions.Any(option => option.Value == Convert.ToString(selectedListaCompra, System.Globalization.CultureInfo.InvariantCulture)))
-            ModelState.AddModelError("ListaCompraId", "Selecciona un registro existente de ListaCompra.");
-        if (model.ListaCompraId is null) ModelState.AddModelError("ListaCompraId", "Debes seleccionar una opción.");
-
-
-        if (string.IsNullOrEmpty(model.Password)) ModelState.AddModelError(nameof(model.Password), "Debes indicar una contraseña.");
-
-        if (!ModelState.IsValid) return View(model);
 
         Usuario createdUser;
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.Usuario.Create");
 
-            var argumentNevera = await unitOfWork.NeveraRepository.ReadAsync(model.NeveraId.GetValueOrDefault()) ?? throw new InvalidOperationException("Nevera not found.");
-            var argumentListaCompra = await unitOfWork.ListaCompraRepository.ReadAsync(model.ListaCompraId.GetValueOrDefault()) ?? throw new InvalidOperationException("ListaCompra not found.");
-            var entity = await service.NewAsync(model.Name, model.Password!, model.Publico, model.Dieta, argumentNevera, argumentListaCompra);
-
-            await service.ApplyUsuarioRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId);
-
-            await service.ModifierUsuarioDefaultAsync(entity);
+            var entity = await service.NewAsync(model.Name, model.Password!, model.Publico, model.Dieta, new Nevera(), new ListaCompra());
             createdUser = entity;
 
             await unitOfWork.CommitAsync();
@@ -213,7 +189,8 @@ public partial class UsuarioController : Controller
             ModelState.AddModelError(string.Empty, "Tu cuenta ya está creada. Inicia sesión desde la página de acceso.");
             return View(model);
         }
-        return RedirectToAction(nameof(Index));
+        TempData["Success"] = $"Tu cuenta se ha creado correctamente. Tu identificador para iniciar sesión es {createdUser.Id}: guárdalo.";
+        return RedirectToAction("Index", "Home");
     /*PROTECTED REGION END*/
     }
 
@@ -222,12 +199,14 @@ public partial class UsuarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id)
     {
-    /*PROTECTED REGION ID(UsuarioController_Edit_GET_body) START*/
+    /*PROTECTED REGION ID(UsuarioController_Edit_GET_body) ENABLED START*/
+
+        // Un usuario solo puede editar su propio perfil; el Administrador puede editar cualquiera.
+        if (!User.CanManageUsuario(id)) return Forbid();
 
         var entity = await _usuarioService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
         var model = UsuarioAssembler.ToViewModel(entity);
-        await LoadFormOptionsAsync(model);
         return View(model);
     /*PROTECTED REGION END*/
     }
@@ -238,8 +217,10 @@ public partial class UsuarioController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.UsuarioViewModel model)
     {
-    /*PROTECTED REGION ID(UsuarioController_Edit_POST_body) START*/
+    /*PROTECTED REGION ID(UsuarioController_Edit_POST_body) ENABLED START*/
 
+        // Un usuario solo puede editar su propio perfil; el Administrador puede editar cualquiera.
+        if (!User.CanManageUsuario(id)) return Forbid();
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.UsuarioService(unitOfWork);
@@ -247,36 +228,28 @@ public partial class UsuarioController : Controller
         var entity = await service.ReadOIDUsuarioDefaultAsync(id);
         if (entity is null) return NotFound();
 
+        // La Nevera y la ListaCompra no son editables: se conservan las del servidor
+        // (nunca se confía en los ids recibidos del formulario).
+        ModelState.Remove(nameof(model.NeveraId));
+        ModelState.Remove(nameof(model.ListaCompraId));
+        model.Id = id;
+        model.NeveraId = entity.Nevera?.Id;
+        model.ListaCompraId = entity.ListaCompra?.Id;
+        model.NeveraLabel = entity.Nevera?.Id.ToString();
+        model.ListaCompraLabel = entity.ListaCompra?.Id.ToString();
 
-
-        await LoadFormOptionsAsync(model, unitOfWork);
-        if (model.NeveraId is int selectedNevera &&
-            !model.NeveraOptions.Any(option => option.Value == Convert.ToString(selectedNevera, System.Globalization.CultureInfo.InvariantCulture)))
-            ModelState.AddModelError("NeveraId", "Selecciona un registro existente de Nevera.");
-        if (model.NeveraId is null) ModelState.AddModelError("NeveraId", "Debes seleccionar una opción.");
-        if (model.ListaCompraId is int selectedListaCompra &&
-            !model.ListaCompraOptions.Any(option => option.Value == Convert.ToString(selectedListaCompra, System.Globalization.CultureInfo.InvariantCulture)))
-            ModelState.AddModelError("ListaCompraId", "Selecciona un registro existente de ListaCompra.");
-        if (model.ListaCompraId is null) ModelState.AddModelError("ListaCompraId", "Debes seleccionar una opción.");
-
-
-
+        // No se puede tomar el nombre reservado del administrador (salvo que ya sea el suyo).
+        if (HariaWebAuthentication.IsReservedAdministratorName(model.Name) &&
+            !string.Equals(entity.Name?.Trim(), model.Name?.Trim(), StringComparison.OrdinalIgnoreCase))
+            ModelState.AddModelError(nameof(model.Name), "Ese nombre está reservado. Elige otro.");
 
         if (!ModelState.IsValid) return View(model);
-
 
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.Usuario.Edit");
 
-            var argumentNevera = await unitOfWork.NeveraRepository.ReadAsync(model.NeveraId.GetValueOrDefault()) ?? throw new InvalidOperationException("Nevera not found.");
-            var argumentListaCompra = await unitOfWork.ListaCompraRepository.ReadAsync(model.ListaCompraId.GetValueOrDefault()) ?? throw new InvalidOperationException("ListaCompra not found.");
-            await service.ModifyAsync(id, model.Name, (string.IsNullOrEmpty(model.Password) ? entity.Password : model.Password), model.Publico, model.Dieta, argumentNevera, argumentListaCompra);
-            entity = await service.ReadOIDUsuarioDefaultAsync(id) ?? throw new InvalidOperationException("Entity disappeared during update.");
-            await service.ApplyUsuarioRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId);
-
-            await service.ModifierUsuarioDefaultAsync(entity);
-
+            await service.ModifyAsync(id, model.Name, (string.IsNullOrEmpty(model.Password) ? entity.Password : model.Password), model.Publico, model.Dieta, entity.Nevera, entity.ListaCompra);
 
             await unitOfWork.CommitAsync();
         }
@@ -289,13 +262,16 @@ public partial class UsuarioController : Controller
             return View(model);
         }
 
-
-        return RedirectToAction(nameof(Index));
+        TempData["Success"] = "Cambios guardados correctamente.";
+        return User.IsAdministrador()
+            ? RedirectToAction(nameof(Index))
+            : RedirectToAction(nameof(Details), new { id });
     /*PROTECTED REGION END*/
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(UsuarioController_Delete_GET_attributes) START*/
+    /*PROTECTED REGION ID(UsuarioController_Delete_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Delete(int id)
     {
@@ -310,7 +286,8 @@ public partial class UsuarioController : Controller
     [HttpPost]
     [ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(UsuarioController_DeleteConfirmed_POST_attributes) START*/
+    /*PROTECTED REGION ID(UsuarioController_DeleteConfirmed_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> DeleteConfirmed(int id)
     {

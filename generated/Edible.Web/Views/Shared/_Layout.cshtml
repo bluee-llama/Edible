@@ -18,14 +18,64 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="mainNavigation">
+                    @{
+                        var autenticado = User.Identity?.IsAuthenticated == true;
+                        var esChef = User.IsInRole("Chef");
+                        var esAdmin = User.IsInRole("Administrador");
+                    }
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Inicio</a></li>
+                        @if (autenticado)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Mi cocina</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Nevera" asp-action="Index">Neveras</a></li>
+                                    <li><a class="dropdown-item" asp-controller="IngredienteNevera" asp-action="Index">Ingredientes en la nevera</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ListaCompra" asp-action="Index">Listas de la compra</a></li>
+                                    <li><a class="dropdown-item" asp-controller="IngredienteCompra" asp-action="Index">Ingredientes de la compra</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Recetas</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Receta" asp-action="Index">Recetas</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Receta" asp-action="BusquedaAvanzada">Búsqueda avanzada</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Comentario" asp-action="Index">Comentarios</a></li>
+                                </ul>
+                            </li>
+                        }
+                        @if (esChef || esAdmin)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Catálogo (Chef)</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Ingrediente" asp-action="Index">Ingredientes</a></li>
+                                    <li><a class="dropdown-item" asp-controller="LineaReceta" asp-action="Index">Líneas de receta</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Paso" asp-action="Index">Pasos</a></li>
+                                </ul>
+                            </li>
+                        }
+                        @if (esAdmin)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Administración</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Usuario" asp-action="Index">Usuarios</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Chef" asp-action="Index">Chefs</a></li>
+                                </ul>
+                            </li>
+                        }
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Privacy">Privacidad</a></li>
                     </ul>
                     <div class="d-flex align-items-lg-center gap-2">
                     @if (User.Identity?.IsAuthenticated == true)
                     {
-                        <span class="navbar-text text-white-50 small">@User.Identity.Name</span>
+                        <a class="btn btn-outline-light btn-sm" asp-controller="Usuario" asp-action="Perfil">Mi perfil</a>
+                        <span class="navbar-text text-white-50 small">
+                            #@User.Identity.Name
+                            <span class="badge text-bg-light text-primary">@(esAdmin ? "Administrador" : esChef ? "Chef" : "Usuario")</span>
+                        </span>
                         <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
                             <button type="submit" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
                         </form>
@@ -33,6 +83,7 @@
                     else
                     {
                         <a class="btn btn-light btn-sm" asp-controller="Account" asp-action="Login">Iniciar sesión</a>
+                        <a class="btn btn-outline-light btn-sm" asp-controller="Usuario" asp-action="Register">Registrarse</a>
                     }
                     </div>
                 </div>
@@ -41,6 +92,16 @@
     </header>
 
     <main class="container flex-grow-1 py-4 py-lg-5">
+        @foreach (var (clave, clase) in new[] { ("Success", "success"), ("Warning", "warning"), ("Error", "danger") })
+        {
+            if (TempData[clave] is string mensaje && !string.IsNullOrWhiteSpace(mensaje))
+            {
+                <div class="alert alert-@clase alert-dismissible fade show" role="alert">
+                    @mensaje
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            }
+        }
         @RenderBody()
     </main>
 

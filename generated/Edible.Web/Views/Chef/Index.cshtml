@@ -42,6 +42,11 @@
                             <td class="text-end text-nowrap">
                                 <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
                                 <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                <form asp-action="@(item.Publico ? "PonerPrivado" : "PonerPublico")" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="p_oid" value="@item.Id" />
+                        <button type="submit" class="btn btn-sm btn-outline-warning">@(item.Publico ? "Poner privado" : "Poner público")</button>
+                    </form>
                                 <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
                             </td>
                     </tr>

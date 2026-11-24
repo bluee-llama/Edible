@@ -33,8 +33,19 @@
             </div>
             <div class="card-footer bg-body p-4">
                 <div class="d-flex flex-column flex-sm-row gap-2">
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
-                <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
+                @if (Edible.Web.Utils.Security.HariaWebUserExtensions.CanManageUsuario(User, Model.Id))
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                    <form asp-action="@(Model.Publico ? "PonerPrivado" : "PonerPublico")" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="p_oid" value="@Model.Id" />
+                        <button type="submit" class="btn btn-outline-warning">@(Model.Publico ? "Poner privado" : "Poner público")</button>
+                    </form>
+                }
+                @if (User.IsInRole("Administrador"))
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
+                }
             </div>
             </div>
         </div>

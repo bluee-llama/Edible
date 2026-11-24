@@ -16,7 +16,13 @@ public sealed partial class UsuarioService
         var entity = await _repository.ReadAsync(p_oid)
             ?? throw new ModelException("El usuario no existe.");
 
-        // Se persiste la lectura transaccional respetando los atributos del modelo TDM oficial.
+        if (entity.Publico == true)
+        {
+            throw new ModelException("El usuario ya es público.");
+        }
+
+        entity.Publico = true;
+
         await _repository.SaveAsync(entity);
         /*PROTECTED REGION END*/
     }
