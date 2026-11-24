@@ -51,7 +51,9 @@ public sealed partial class RecetaUseCase
                 
                 if (ingredienteDisponible == null || ingredienteDisponible.Cantidad < linea.CantidadNecesaria)
                 {
-                    throw new ModelException($"Falta stock del ingrediente ID: {linea.IngredienteCatalogo?.Id}");
+                    var nombreIngrediente = linea.IngredienteCatalogo?.Nombre ?? $"ID {linea.IngredienteCatalogo?.Id}";
+                    var disponible = ingredienteDisponible?.Cantidad ?? 0;
+                    throw new ModelException($"Falta stock del ingrediente «{nombreIngrediente}»: se necesitan {linea.CantidadNecesaria} y hay {disponible}.");
                 }
             }
             await _unitOfWork.CommitAsync();

@@ -47,16 +47,18 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Details(int id)
     {
-    /*PROTECTED REGION ID(RecetaController_Details_GET_body) START*/
+    /*PROTECTED REGION ID(RecetaController_Details_GET_body) ENABLED START*/
 
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        ViewData["UsuarioOptions"] = await RecetaWebSupport.LoadUsuarioOptionsAsync(_formUnitOfWorkFactory, User, entity.Chef?.Id);
         return View(RecetaAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(RecetaController_Create_GET_attributes) START*/
+    /*PROTECTED REGION ID(RecetaController_Create_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Chef,Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
@@ -71,7 +73,8 @@ public partial class RecetaController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(RecetaController_Create_POST_attributes) START*/
+    /*PROTECTED REGION ID(RecetaController_Create_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Chef,Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.RecetaViewModel model)
     {
@@ -155,7 +158,8 @@ public partial class RecetaController : Controller
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(RecetaController_Edit_GET_attributes) START*/
+    /*PROTECTED REGION ID(RecetaController_Edit_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Chef,Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id)
     {
@@ -171,7 +175,8 @@ public partial class RecetaController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(RecetaController_Edit_POST_attributes) START*/
+    /*PROTECTED REGION ID(RecetaController_Edit_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Chef,Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.RecetaViewModel model)
     {
@@ -258,7 +263,8 @@ public partial class RecetaController : Controller
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(RecetaController_Delete_GET_attributes) START*/
+    /*PROTECTED REGION ID(RecetaController_Delete_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Chef,Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Delete(int id)
     {
@@ -273,7 +279,8 @@ public partial class RecetaController : Controller
     [HttpPost]
     [ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(RecetaController_DeleteConfirmed_POST_attributes) START*/
+    /*PROTECTED REGION ID(RecetaController_DeleteConfirmed_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Chef,Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
@@ -302,10 +309,19 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> BuscarNombre(string p_nombre)
     {
-    /*PROTECTED REGION ID(RecetaController_BuscarNombre_GET_body) START*/
+    /*PROTECTED REGION ID(RecetaController_BuscarNombre_GET_body) ENABLED START*/
 
-        var result = await _recetaService.BuscarNombreAsync(p_nombre);
-        return Ok(result.Select(RecetaAssembler.ToViewModel).ToList());
+        // Vista HTML con formulario GET; sin p_nombre solo se muestra el formulario.
+        var buscado = p_nombre is not null;
+        var recetas = new List<Edible.Web.ViewModels.RecetaViewModel>();
+        if (buscado)
+        {
+            var result = await _recetaService.BuscarNombreAsync(p_nombre!);
+            recetas = result.Select(RecetaAssembler.ToViewModel).ToList();
+        }
+        ViewData["p_nombre"] = p_nombre ?? string.Empty;
+        ViewData["Buscado"] = buscado;
+        return View(recetas);
     /*PROTECTED REGION END*/
     }
 
@@ -314,10 +330,23 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> RecetasPorNevera(int p_nevera_oid)
     {
-    /*PROTECTED REGION ID(RecetaController_RecetasPorNevera_GET_body) START*/
+    /*PROTECTED REGION ID(RecetaController_RecetasPorNevera_GET_body) ENABLED START*/
 
-        var result = await _recetaService.RecetasPorNeveraAsync(p_nevera_oid);
-        return Ok(result.Select(RecetaAssembler.ToViewModel).ToList());
+        // Solo se ofrecen las neveras que el usuario puede consultar (la suya; todas si es administrador).
+        var neveras = await RecetaWebSupport.LoadNeveraOptionsAsync(_formUnitOfWorkFactory, User);
+        var seleccionada = p_nevera_oid > 0;
+        var recetas = new List<Edible.Web.ViewModels.RecetaViewModel>();
+        if (seleccionada)
+        {
+            var idTexto = p_nevera_oid.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (!neveras.Any(option => option.Value == idTexto)) return Forbid();
+            var result = await _recetaService.RecetasPorNeveraAsync(p_nevera_oid);
+            recetas = result.Select(RecetaAssembler.ToViewModel).ToList();
+        }
+        ViewData["NeveraOptions"] = neveras;
+        ViewData["p_nevera_oid"] = p_nevera_oid;
+        ViewData["Buscado"] = seleccionada;
+        return View(recetas);
     /*PROTECTED REGION END*/
     }
 
