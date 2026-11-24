@@ -155,6 +155,110 @@ public static class SeedData
             /*PROTECTED REGION ID(initializeDataMethod) ENABLED START*/
             // Add custom seed data here.
 
+            // ---- Nevera y Lista de la Compra (Àngel): stock con los 3 estados de caducidad e ítems de compra ----
+            {
+                var nvTodosUsuarios = (await unitOfWork.UsuarioRepository.ReadAllAsync())
+                    .Where(u => u.Nevera is not null && u.ListaCompra is not null)
+                    .OrderBy(u => u.Id)
+                    .ToList();
+                var nvUsuariosReales = nvTodosUsuarios
+                    .Where(u => !u.Name.StartsWith("Sample ", StringComparison.Ordinal))
+                    .ToList();
+                var nvUsuariosDestino = (nvUsuariosReales.Count > 0 ? nvUsuariosReales : nvTodosUsuarios)
+                    .Take(2)
+                    .ToList();
+
+                if (nvUsuariosDestino.Count == 0)
+                {
+                    Console.WriteLine("[SKIP] No hay usuarios con nevera y lista de compra para sembrar stock inicial.");
+                }
+                else
+                {
+                    var nvExistentes = (await unitOfWork.IngredienteRepository.ReadAllAsync()).ToList();
+                    async Task<Ingrediente> ObtenerOCrearIngredienteAsync(
+                        string nombre,
+                        TipoIngrediente tipo,
+                        int calorias,
+                        Alergenos alergeno = Alergenos.ninguno,
+                        DietaEspecial dieta = DietaEspecial.ninguna)
+                    {
+                        var existente = nvExistentes.FirstOrDefault(i =>
+                            string.Equals(i.Nombre, nombre, StringComparison.OrdinalIgnoreCase));
+                        if (existente is not null) return existente;
+
+                        var alergenos = alergeno == Alergenos.ninguno
+                            ? new List<Alergenos>()
+                            : new List<Alergenos> { alergeno };
+                        var dietas = dieta == DietaEspecial.ninguna
+                            ? new List<DietaEspecial>()
+                            : new List<DietaEspecial> { dieta };
+
+                        var creado = await ingredienteService.NewAsync(
+                            nombre, tipo, calorias, 5f, 10f, 3f, 100f, alergenos, dietas);
+                        nvExistentes.Add(creado);
+                        return creado;
+                    }
+
+                    var ingLeche = await ObtenerOCrearIngredienteAsync(
+                        "Leche Entera", TipoIngrediente.leche_y_productos_lacteos, 64, Alergenos.lactosa, DietaEspecial.vegetariana);
+                    var ingYogur = await ObtenerOCrearIngredienteAsync(
+                        "Yogur Natural", TipoIngrediente.leche_y_productos_lacteos, 61, Alergenos.lactosa, DietaEspecial.vegetariana);
+                    var ingManzana = await ObtenerOCrearIngredienteAsync(
+                        "Manzana Fuji", TipoIngrediente.frutas_y_productos_a_base_de_fruta, 52, Alergenos.ninguno, DietaEspecial.vegana);
+                    var ingArroz = await ObtenerOCrearIngredienteAsync(
+                        "Arroz Redondo", TipoIngrediente.cereales_y_productos_a_base_de_cereales, 130, Alergenos.ninguno, DietaEspecial.sinGluten);
+                    var ingPollo = await ObtenerOCrearIngredienteAsync(
+                        "Pechuga de Pollo", TipoIngrediente.carne_y_productos_carnicos, 165);
+
+                    var hoy = DateTime.Today;
+                    var totalNeveraSembrados = 0;
+                    var totalCompraSembrados = 0;
+
+                    foreach (var nvUsuario in nvUsuariosDestino)
+                    {
+                        var nevera = nvUsuario.Nevera;
+                        var listaCompra = nvUsuario.ListaCompra;
+
+                        // 1. Ingrediente CADUCADO (hace 3 días) -> para probar FiltrarNevera(caducado) y ComprobarCaducidad
+                        await ingredienteNeveraService.AddIngredienteNeveraDefaultAsync(new IngredienteNevera
+                        {
+                            Cantidad = 2,
+                            FechaCaducidad = hoy.AddDays(-3),
+                            IngredienteCatalogo = ingLeche,
+                            Nevera = nevera
+                        });
+
+                        // 2. Ingrediente CERCA DE CADUCAR (en 2 días) -> para probar FiltrarNevera(cerca)
+                        await ingredienteNeveraService.AddIngredienteNeveraDefaultAsync(new IngredienteNevera
+                        {
+                            Cantidad = 4,
+                            FechaCaducidad = hoy.AddDays(2),
+                            IngredienteCatalogo = ingYogur,
+                            Nevera = nevera
+                        });
+
+                        // 3. Ingrediente en PERFECTO estado (en 15 días) -> para probar FiltrarNevera(perfecto)
+                        await ingredienteNeveraService.AddIngredienteNeveraDefaultAsync(new IngredienteNevera
+                        {
+                            Cantidad = 6,
+                            FechaCaducidad = hoy.AddDays(15),
+                            IngredienteCatalogo = ingManzana,
+                            Nevera = nevera
+                        });
+                        totalNeveraSembrados += 3;
+
+                        // Lista de la compra: 2 comprados (Leche para probar fusión de stock y Arroz para alta nueva) y 1 pendiente (Pollo)
+                        await ingredienteCompraService.NewAsync(3, hoy.AddDays(7), true, nevera.Id, listaCompra.Id, ingLeche.Id);
+                        await ingredienteCompraService.NewAsync(2, hoy.AddDays(30), true, nevera.Id, listaCompra.Id, ingArroz.Id);
+                        await ingredienteCompraService.NewAsync(1, hoy.AddDays(5), false, nevera.Id, listaCompra.Id, ingPollo.Id);
+                        totalCompraSembrados += 3;
+                    }
+
+                    Ensure(totalNeveraSembrados >= nvUsuariosDestino.Count * 3, "Stock inicial de IngredienteNevera sembrado (caducado, cerca y perfecto).");
+                    Ensure(totalCompraSembrados >= nvUsuariosDestino.Count * 3, "Ítems iniciales de IngredienteCompra sembrados (comprados y pendientes).");
+                }
+            }
+
             // ---- Comunidad (Rodrigo): comentarios iniciales con valoraciones variadas ----
             // Debe ejecutarse DESPUÉS del seed de usuarios y recetas del resto del equipo (mantener este bloque
             // el último de la región al integrar). No falla si todavía no hay usuarios o recetas.

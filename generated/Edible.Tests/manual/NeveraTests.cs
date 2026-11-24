@@ -304,6 +304,109 @@ public class NeveraTests
         Assert.True(quesoEnCompra.Comprado);
     }
 
+    // ---- Tests de Operaciones Custom en Sesión Nueva (ComprobarCaducidad, MarcarComprado, DesmarcarComprado) ----
+
+    [Fact]
+    public async Task ComprobarCaducidad_IngredienteCaducado_PoneCantidadACeroEnSesionNueva()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioCaducado");
+        var ingYogur = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Yogur Natural");
+
+        var itemCaducado = new IngredienteNevera
+        {
+            Cantidad = 4,
+            FechaCaducidad = DateTime.UtcNow.Date.AddDays(-3),
+            IngredienteCatalogo = ingYogur,
+            Nevera = usuario.Nevera
+        };
+        await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(itemCaducado);
+
+        var service = new Edible.Application.Services.IngredienteNeveraService(scenario.UnitOfWork);
+        await service.ComprobarCaducidadAsync(itemCaducado.Id);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var leido = await fresh.IngredienteNeveraRepository.ReadAsync(itemCaducado.Id);
+        Assert.NotNull(leido);
+        Assert.Equal(0, leido!.Cantidad);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(10)]
+    public async Task ComprobarCaducidad_IngredienteNoCaducado_MantieneCantidadEnSesionNueva(int diasHastaCaducidad)
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioFresco");
+        var ingLeche = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Leche Fresca");
+
+        var item = new IngredienteNevera
+        {
+            Cantidad = 5,
+            FechaCaducidad = DateTime.UtcNow.Date.AddDays(diasHastaCaducidad),
+            IngredienteCatalogo = ingLeche,
+            Nevera = usuario.Nevera
+        };
+        await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(item);
+
+        var service = new Edible.Application.Services.IngredienteNeveraService(scenario.UnitOfWork);
+        await service.ComprobarCaducidadAsync(item.Id);
+
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var leido = await fresh.IngredienteNeveraRepository.ReadAsync(item.Id);
+        Assert.NotNull(leido);
+        Assert.Equal(5, leido!.Cantidad);
+    }
+
+    [Fact]
+    public async Task ComprobarCaducidad_IngredienteInexistente_LanzaModelException()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var service = new Edible.Application.Services.IngredienteNeveraService(scenario.UnitOfWork);
+
+        await Assert.ThrowsAsync<ModelException>(() => service.ComprobarCaducidadAsync(99999));
+    }
+
+    [Fact]
+    public async Task MarcarYDesmarcarComprado_PersisteCambiosEnSesionNuevaYValidaPrecondiciones()
+    {
+        await using var scenario = await TestFixture.CreateScenarioAsync();
+        var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioLista");
+        var ingArroz = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Arroz");
+
+        var item = new IngredienteCompra
+        {
+            Cantidad = 2,
+            Comprado = false,
+            IngredienteCatalogo = ingArroz,
+            ListaCompra = usuario.ListaCompra,
+            Nevera = usuario.Nevera
+        };
+        await scenario.UnitOfWork.IngredienteCompraRepository.SaveAsync(item);
+
+        var service = new Edible.Application.Services.IngredienteCompraService(scenario.UnitOfWork);
+
+        await service.MarcarCompradoAsync(item.Id);
+        await using (var fresh1 = scenario.CreateFreshUnitOfWork())
+        {
+            var enBd = await fresh1.IngredienteCompraRepository.ReadAsync(item.Id);
+            Assert.NotNull(enBd);
+            Assert.True(enBd!.Comprado);
+        }
+
+        await Assert.ThrowsAsync<ModelException>(() => service.MarcarCompradoAsync(item.Id));
+
+        await service.DesmarcarCompradoAsync(item.Id);
+        await using (var fresh2 = scenario.CreateFreshUnitOfWork())
+        {
+            var enBd = await fresh2.IngredienteCompraRepository.ReadAsync(item.Id);
+            Assert.NotNull(enBd);
+            Assert.False(enBd!.Comprado);
+        }
+
+        await Assert.ThrowsAsync<ModelException>(() => service.DesmarcarCompradoAsync(item.Id));
+    }
+
     private sealed class IngredienteNeveraRepositoryQueFalla : IIngredienteNeveraRepository
     {
         private readonly IIngredienteNeveraRepository _inner;

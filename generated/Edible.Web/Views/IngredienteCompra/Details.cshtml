@@ -33,6 +33,22 @@
             </div>
             <div class="card-footer bg-body p-4">
                 <div class="d-flex flex-column flex-sm-row gap-2">
+                @if (!Model.Comprado)
+                {
+                    <form asp-action="MarcarComprado" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="p_oid" value="@Model.Id" />
+                        <button type="submit" class="btn btn-outline-success">Marcar comprado</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="DesmarcarComprado" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="p_oid" value="@Model.Id" />
+                        <button type="submit" class="btn btn-outline-warning">Desmarcar comprado</button>
+                    </form>
+                }
                 <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
                 <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
             </div>

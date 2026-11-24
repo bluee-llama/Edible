@@ -1,0 +1,127 @@
+@using System.Globalization
+@using Edible.Domain.Enums
+@model Edible.Web.ViewModels.FiltrarNeveraViewModel
+
+@{
+    ViewData["Title"] = "Filtrar ingredientes de la nevera";
+    var tipos = Html.GetEnumSelectList<TipoIngrediente>();
+    var estados = Html.GetEnumSelectList<EstadoCaducidad>();
+    var fechaActualStr = Model.FechaActual.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var fechaLimiteStr = Model.FechaLimiteCerca.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-body p-4">
+        <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Filtro</span>
+        <h1 class="h3 mb-1">Filtrar ingredientes de la nevera</h1>
+        <p class="text-body-secondary mb-0">
+            Filtra el stock de una nevera por categoría de alimento, fechas de referencia y estado de caducidad.
+        </p>
+    </div>
+    <form method="get" asp-action="FiltrarNevera">
+        <div class="card-body p-4">
+            <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+            <div class="row g-3">
+                <div class="col-md-6 col-lg-4">
+                    <label for="p_nevera_oid" class="form-label">Nevera</label>
+                    <select id="p_nevera_oid" name="p_nevera_oid" class="form-select" required>
+                        <option value="0">Selecciona una nevera...</option>
+                        @foreach (var item in Model.NeveraOptions)
+                        {
+                            <option value="@item.Value" selected="@(item.Value == Model.NeveraId.ToString(CultureInfo.InvariantCulture))">@item.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label for="p_tipo" class="form-label">Tipo de ingrediente</label>
+                    <select id="p_tipo" name="p_tipo" class="form-select">
+                        @foreach (var item in tipos)
+                        {
+                            <option value="@item.Value" selected="@(item.Value == ((int)Model.Tipo).ToString(CultureInfo.InvariantCulture))">@(item.Text == "ninguno" ? "Cualquiera" : item.Text)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label for="p_estado" class="form-label">Estado de caducidad</label>
+                    <select id="p_estado" name="p_estado" class="form-select">
+                        @foreach (var item in estados)
+                        {
+                            <option value="@item.Value" selected="@(item.Value == ((int)Model.Estado).ToString(CultureInfo.InvariantCulture))">@(item.Text == "ninguno" ? "Cualquiera" : item.Text)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="p_fechaActual" class="form-label">Fecha actual de referencia</label>
+                    <input id="p_fechaActual" name="p_fechaActual" type="date" value="@fechaActualStr" class="form-control" required />
+                </div>
+                <div class="col-md-6">
+                    <label for="p_fechaLimiteCerca" class="form-label">Fecha límite de aviso (cerca de caducar)</label>
+                    <input id="p_fechaLimiteCerca" name="p_fechaLimiteCerca" type="date" value="@fechaLimiteStr" class="form-control" required />
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-body p-4 d-flex flex-column flex-sm-row gap-2">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a asp-action="FiltrarNevera" class="btn btn-outline-secondary">Limpiar filtros</a>
+            <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
+        </div>
+    </form>
+</div>
+
+@if (Model.Buscado)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-body p-4">
+            <h2 class="h5 mb-0">Resultados (@Model.Resultados.Count)</h2>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Resultados.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Ingrediente</th>
+                                <th scope="col">Cantidad</th>
+                                <th scope="col">Fecha de caducidad</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col">Nevera</th>
+                                <th scope="col" class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in Model.Resultados)
+                        {
+                            var fechaItem = item.FechaCaducidad.Date;
+                            var estadoCalculado = fechaItem < Model.FechaActual.Date
+                                ? ("Caducado", "text-bg-danger")
+                                : (fechaItem <= Model.FechaLimiteCerca.Date
+                                    ? ("Cerca de caducar", "text-bg-warning")
+                                    : ("Perfecto", "text-bg-success"));
+                            <tr>
+                                <td>@item.Id</td>
+                                <td>@item.IngredienteCatalogoLabel</td>
+                                <td>@item.Cantidad</td>
+                                <td>@item.FechaCaducidad.ToString("yyyy-MM-dd")</td>
+                                <td><span class="badge @estadoCalculado.Item2">@estadoCalculado.Item1</span></td>
+                                <td>#@item.NeveraLabel</td>
+                                <td class="text-end text-nowrap">
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center p-5">
+                    <h2 class="h5">Sin coincidencias</h2>
+                    <p class="text-body-secondary mb-0">Ningún ingrediente en la nevera seleccionada cumple los criterios indicados.</p>
+                </div>
+            }
+        </div>
+    </div>
+}

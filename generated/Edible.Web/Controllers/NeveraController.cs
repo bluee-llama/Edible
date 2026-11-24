@@ -12,7 +12,7 @@ using Edible.Domain.Enums;
 namespace Edible.Web.Controllers;
 
 /*PROTECTED REGION ID(NeveraController_class_attributes) ENABLED START*/
-[Authorize]
+[Authorize(Roles = "Usuario,Chef,Administrador")]
 /*PROTECTED REGION END*/
 public partial class NeveraController : Controller
 {

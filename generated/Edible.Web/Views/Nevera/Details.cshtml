@@ -26,6 +26,7 @@
             </div>
             <div class="card-footer bg-body p-4">
                 <div class="d-flex flex-column flex-sm-row gap-2">
+                <a asp-action="RecorrerListaCompra" asp-route-usuarioId="@Model.UsuarioId" class="btn btn-outline-primary">Volcar lista de compra</a>
                 <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
                 <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
             </div>

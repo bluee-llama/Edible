@@ -251,8 +251,10 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:marcarComprado:assert) ENABLED START*/
-        var itemBD = await scenario.UnitOfWork.IngredienteCompraRepository.ReadAsync(itemId);
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var itemBD = await fresh.IngredienteCompraRepository.ReadAsync(itemId);
         Assert.NotNull(itemBD);
+        Assert.True(itemBD!.Comprado);
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -285,8 +287,10 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteCompra:desmarcarComprado:assert) ENABLED START*/
-        var itemBD = await scenario.UnitOfWork.IngredienteCompraRepository.ReadAsync(itemId);
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var itemBD = await fresh.IngredienteCompraRepository.ReadAsync(itemId);
         Assert.NotNull(itemBD);
+        Assert.False(itemBD!.Comprado);
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/
     }
@@ -299,7 +303,7 @@ public sealed class ManualOperationTests
         var ingredienteNeveraService = new IngredienteNeveraService(scenario.UnitOfWork);
         var usuario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioCaducidad");
         var ingrediente = await RecetaScenarioHelper.CrearIngredienteAsync(scenario.UnitOfWork, "Yogur");
-        var item = new IngredienteNevera { Cantidad = 1, FechaCaducidad = DateTime.UtcNow.AddDays(5), IngredienteCatalogo = ingrediente, Nevera = usuario.Nevera };
+        var item = new IngredienteNevera { Cantidad = 3, FechaCaducidad = DateTime.UtcNow.Date.AddDays(-2), IngredienteCatalogo = ingrediente, Nevera = usuario.Nevera };
         await scenario.UnitOfWork.IngredienteNeveraRepository.SaveAsync(item);
         int itemId = item.Id;
         /*PROTECTED REGION END*/
@@ -319,8 +323,10 @@ public sealed class ManualOperationTests
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:IngredienteNevera:comprobarCaducidad:assert) ENABLED START*/
-        var itemBD = await scenario.UnitOfWork.IngredienteNeveraRepository.ReadAsync(itemId);
+        await using var fresh = scenario.CreateFreshUnitOfWork();
+        var itemBD = await fresh.IngredienteNeveraRepository.ReadAsync(itemId);
         Assert.NotNull(itemBD);
+        Assert.Equal(0, itemBD!.Cantidad);
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/

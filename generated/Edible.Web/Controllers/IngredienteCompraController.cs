@@ -12,7 +12,7 @@ using Edible.Domain.Enums;
 namespace Edible.Web.Controllers;
 
 /*PROTECTED REGION ID(IngredienteCompraController_class_attributes) ENABLED START*/
-[Authorize]
+[Authorize(Roles = "Usuario,Chef,Administrador")]
 /*PROTECTED REGION END*/
 public partial class IngredienteCompraController : Controller
 {
@@ -59,9 +59,12 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Create_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_Create_GET_body) ENABLED START*/
 
-        var model = new Edible.Web.ViewModels.IngredienteCompraViewModel();
+        var model = new Edible.Web.ViewModels.IngredienteCompraViewModel
+        {
+            Cantidad = 1
+        };
 
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -248,13 +251,21 @@ public partial class IngredienteCompraController : Controller
     }
     /*PROTECTED REGION END*/
 
-    /*PROTECTED REGION ID(IngredienteCompraController_method_LoadFormOptionsAsync_EdibleWebViewModelsIngredienteCompraViewModel_EdibleApplicationAbstractionsIUnitOfWork) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_method_LoadFormOptionsAsync_EdibleWebViewModelsIngredienteCompraViewModel_EdibleApplicationAbstractionsIUnitOfWork) ENABLED START*/
     private async Task LoadFormOptionsAsync(Edible.Web.ViewModels.IngredienteCompraViewModel model, Edible.Application.Abstractions.IUnitOfWork unitOfWork)
     {
+        var currentUserId = int.TryParse(User?.Identity?.Name, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var uid) ? uid : (int?)null;
+        var neveras = await unitOfWork.NeveraRepository.ReadAllAsync();
+        var listas = await unitOfWork.ListaCompraRepository.ReadAllAsync();
+        if (currentUserId is int currentId)
+        {
+            model.NeveraId ??= neveras.FirstOrDefault(n => n.Usuario?.Id == currentId)?.Id;
+            model.ListaCompraId ??= listas.FirstOrDefault(l => l.Usuario?.Id == currentId)?.Id;
+        }
 
-        var options0 = (await unitOfWork.NeveraRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
-        var options1 = (await unitOfWork.ListaCompraRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
-        var options2 = (await unitOfWork.IngredienteRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Nombre, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
+        var options0 = neveras.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = item.Usuario is not null ? $"Nevera #{item.Id} ({item.Usuario.Name})" : $"Nevera #{item.Id}" }).ToList();
+        var options1 = listas.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = item.Usuario is not null ? $"Lista #{item.Id} ({item.Usuario.Name})" : $"Lista #{item.Id}" }).ToList();
+        var options2 = (await unitOfWork.IngredienteRepository.ReadAllAsync()).OrderBy(item => item.Nombre).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Nombre, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
         model.NeveraOptions = options0.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
         {
             Value = item.Value,

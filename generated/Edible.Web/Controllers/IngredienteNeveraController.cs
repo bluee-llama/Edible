@@ -12,7 +12,7 @@ using Edible.Domain.Enums;
 namespace Edible.Web.Controllers;
 
 /*PROTECTED REGION ID(IngredienteNeveraController_class_attributes) ENABLED START*/
-[Authorize]
+[Authorize(Roles = "Usuario,Chef,Administrador")]
 /*PROTECTED REGION END*/
 public partial class IngredienteNeveraController : Controller
 {
@@ -59,9 +59,13 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Create_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_Create_GET_body) ENABLED START*/
 
-        var model = new Edible.Web.ViewModels.IngredienteNeveraViewModel();
+        var model = new Edible.Web.ViewModels.IngredienteNeveraViewModel
+        {
+            Cantidad = 1,
+            FechaCaducidad = DateTime.Today.AddDays(7)
+        };
 
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -74,15 +78,10 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.IngredienteNeveraViewModel model)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Create_POST_body) START*/
-
+    /*PROTECTED REGION ID(IngredienteNeveraController_Create_POST_body) ENABLED START*/
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.IngredienteNeveraService(unitOfWork);
-
-
-
-
 
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.IngredienteCatalogoId is int selectedIngredienteCatalogo &&
@@ -96,25 +95,33 @@ public partial class IngredienteNeveraController : Controller
         if (model.RecetaId is int selectedReceta &&
             !model.RecetaOptions.Any(option => option.Value == Convert.ToString(selectedReceta, System.Globalization.CultureInfo.InvariantCulture)))
             ModelState.AddModelError("RecetaId", "Selecciona un registro existente de Receta.");
-        if (model.RecetaId is null) ModelState.AddModelError("RecetaId", "Debes seleccionar una opción.");
-
-
-
 
         if (!ModelState.IsValid) return View(model);
-
 
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.IngredienteNevera.Create");
 
+            var ingrediente = await unitOfWork.IngredienteRepository.ReadAsync(model.IngredienteCatalogoId.GetValueOrDefault())
+                ?? throw new InvalidOperationException("Ingrediente not found.");
+            var nevera = await unitOfWork.NeveraRepository.ReadAsync(model.NeveraId.GetValueOrDefault())
+                ?? throw new InvalidOperationException("Nevera not found.");
+            Receta? receta = null;
+            if (model.RecetaId is int recetaId && recetaId > 0)
+            {
+                receta = await unitOfWork.RecetaRepository.ReadAsync(recetaId)
+                    ?? throw new InvalidOperationException("Receta not found.");
+            }
 
-            var entity = await service.NewAsync(model.Cantidad, model.FechaCaducidad, model.IngredienteCatalogoId.GetValueOrDefault(), model.NeveraId.GetValueOrDefault(), model.RecetaId.GetValueOrDefault());
-
-            await service.ApplyIngredienteNeveraRelationsAsync(entity, p_ingredienteCatalogo_id: model.IngredienteCatalogoId, p_nevera_id: model.NeveraId, p_receta_id: model.RecetaId);
-
-            await service.ModifierIngredienteNeveraDefaultAsync(entity);
-
+            var entity = new IngredienteNevera
+            {
+                Cantidad = model.Cantidad,
+                FechaCaducidad = model.FechaCaducidad,
+                IngredienteCatalogo = ingrediente,
+                Nevera = nevera,
+                Receta = receta!
+            };
+            await service.AddIngredienteNeveraDefaultAsync(entity);
 
             await unitOfWork.CommitAsync();
         }
@@ -127,7 +134,7 @@ public partial class IngredienteNeveraController : Controller
             return View(model);
         }
 
-
+        TempData["Success"] = "Ingrediente añadido a la nevera.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -153,16 +160,13 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.IngredienteNeveraViewModel model)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Edit_POST_body) START*/
-
+    /*PROTECTED REGION ID(IngredienteNeveraController_Edit_POST_body) ENABLED START*/
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.IngredienteNeveraService(unitOfWork);
 
         var entity = await service.ReadOIDIngredienteNeveraDefaultAsync(id);
         if (entity is null) return NotFound();
-
-
 
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.IngredienteCatalogoId is int selectedIngredienteCatalogo &&
@@ -176,25 +180,25 @@ public partial class IngredienteNeveraController : Controller
         if (model.RecetaId is int selectedReceta &&
             !model.RecetaOptions.Any(option => option.Value == Convert.ToString(selectedReceta, System.Globalization.CultureInfo.InvariantCulture)))
             ModelState.AddModelError("RecetaId", "Selecciona un registro existente de Receta.");
-        if (model.RecetaId is null) ModelState.AddModelError("RecetaId", "Debes seleccionar una opción.");
-
-
-
 
         if (!ModelState.IsValid) return View(model);
-
 
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.IngredienteNevera.Edit");
 
-
             await service.ModifyAsync(id, model.Cantidad, model.FechaCaducidad);
             entity = await service.ReadOIDIngredienteNeveraDefaultAsync(id) ?? throw new InvalidOperationException("Entity disappeared during update.");
-            await service.ApplyIngredienteNeveraRelationsAsync(entity, p_ingredienteCatalogo_id: model.IngredienteCatalogoId, p_nevera_id: model.NeveraId, p_receta_id: model.RecetaId);
+
+            entity.IngredienteCatalogo = await unitOfWork.IngredienteRepository.ReadAsync(model.IngredienteCatalogoId.GetValueOrDefault())
+                ?? throw new InvalidOperationException("Ingrediente not found.");
+            entity.Nevera = await unitOfWork.NeveraRepository.ReadAsync(model.NeveraId.GetValueOrDefault())
+                ?? throw new InvalidOperationException("Nevera not found.");
+            entity.Receta = model.RecetaId is int recetaId && recetaId > 0
+                ? await unitOfWork.RecetaRepository.ReadAsync(recetaId) ?? throw new InvalidOperationException("Receta not found.")
+                : null!;
 
             await service.ModifierIngredienteNeveraDefaultAsync(entity);
-
 
             await unitOfWork.CommitAsync();
         }
@@ -207,7 +211,7 @@ public partial class IngredienteNeveraController : Controller
             return View(model);
         }
 
-
+        TempData["Success"] = "Ingrediente en nevera actualizado.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -245,10 +249,10 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> FiltrarNevera(int p_nevera_oid, TipoIngrediente p_tipo, DateTime p_fechaLimiteCerca, DateTime p_fechaActual, EstadoCaducidad p_estado)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_FiltrarNevera_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_FiltrarNevera_GET_body) ENABLED START*/
 
-        var result = await _ingredienteNeveraService.FiltrarNeveraAsync(p_nevera_oid, p_tipo, p_fechaLimiteCerca, p_fechaActual, p_estado);
-        return Ok(result.Select(IngredienteNeveraAssembler.ToViewModel).ToList());
+        var model = await BuildFiltrarNeveraAsync(p_nevera_oid, p_tipo, p_fechaLimiteCerca, p_fechaActual, p_estado);
+        return View(model);
     /*PROTECTED REGION END*/
     }
 
@@ -260,13 +264,19 @@ public partial class IngredienteNeveraController : Controller
     }
     /*PROTECTED REGION END*/
 
-    /*PROTECTED REGION ID(IngredienteNeveraController_method_LoadFormOptionsAsync_EdibleWebViewModelsIngredienteNeveraViewModel_EdibleApplicationAbstractionsIUnitOfWork) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_method_LoadFormOptionsAsync_EdibleWebViewModelsIngredienteNeveraViewModel_EdibleApplicationAbstractionsIUnitOfWork) ENABLED START*/
     private async Task LoadFormOptionsAsync(Edible.Web.ViewModels.IngredienteNeveraViewModel model, Edible.Application.Abstractions.IUnitOfWork unitOfWork)
     {
+        var currentUserId = int.TryParse(User?.Identity?.Name, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var uid) ? uid : (int?)null;
+        var neveras = await unitOfWork.NeveraRepository.ReadAllAsync();
+        if (model.NeveraId is null && currentUserId is int currentId)
+        {
+            model.NeveraId = neveras.FirstOrDefault(n => n.Usuario?.Id == currentId)?.Id;
+        }
 
-        var options0 = (await unitOfWork.IngredienteRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Nombre, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
-        var options1 = (await unitOfWork.NeveraRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
-        var options2 = (await unitOfWork.RecetaRepository.ReadAllAsync()).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Nombre, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
+        var options0 = (await unitOfWork.IngredienteRepository.ReadAllAsync()).OrderBy(item => item.Nombre).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Nombre, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
+        var options1 = neveras.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = item.Usuario is not null ? $"Nevera #{item.Id} ({item.Usuario.Name})" : $"Nevera #{item.Id}" }).ToList();
+        var options2 = (await unitOfWork.RecetaRepository.ReadAllAsync()).OrderBy(item => item.Nombre).Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = Convert.ToString(item.Id, System.Globalization.CultureInfo.InvariantCulture), Text = Convert.ToString(item.Nombre, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty }).ToList();
         model.IngredienteCatalogoOptions = options0.Select(item => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
         {
             Value = item.Value,

@@ -5,13 +5,24 @@
     ViewData["Title"] = "IngredienteCompra";
 }
 
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success" role="status">@ok</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-body d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 p-4">
         <div>
             <h1 class="h3 mb-1">IngredienteCompra</h1>
             <p class="text-body-secondary mb-0">Consulta y gestiona los registros disponibles.</p>
         </div>
-        <a asp-action="Create" class="btn btn-primary">Crear</a>
+        <div class="d-flex flex-column flex-sm-row gap-2">
+            <a asp-controller="Nevera" asp-action="RecorrerListaCompra" class="btn btn-outline-primary">Volcar comprados a nevera</a>
+            <a asp-action="Create" class="btn btn-primary">Crear</a>
+        </div>
     </div>
     <div class="card-body p-0">
     @if (Model.Any())
@@ -40,6 +51,22 @@
                             <td>@Html.DisplayFor(modelItem => item.ListaCompraLabel)</td>
                             <td>@Html.DisplayFor(modelItem => item.IngredienteCatalogoLabel)</td>
                             <td class="text-end text-nowrap">
+                                @if (!item.Comprado)
+                                {
+                                    <form asp-action="MarcarComprado" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="p_oid" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Marcar comprado</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="DesmarcarComprado" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="p_oid" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Desmarcar</button>
+                                    </form>
+                                }
                                 <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
                                 <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
                                 <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>

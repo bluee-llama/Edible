@@ -4,14 +4,16 @@ namespace Edible.Web.ViewModels;
 
 public sealed class IngredienteCompraViewModel : IValidatableObject
 {
-    /*PROTECTED REGION ID(IngredienteCompraViewModel_generated) START*/
+    /*PROTECTED REGION ID(IngredienteCompraViewModel_generated) ENABLED START*/
     [Key]
     public int Id { get; set; }
 
+    [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser al menos 1.")]
     public int Cantidad { get; set; }
 
     public bool Comprado { get; set; }
 
+    [Required(ErrorMessage = "Debes indicar {0}.")]
     [UIHint("HariaAssociation")]
     [Display(Name = "Nevera")]
     public int? NeveraId { get; set; }
@@ -20,6 +22,7 @@ public sealed class IngredienteCompraViewModel : IValidatableObject
     [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever, UIHint("HariaAssociationLabel"), Display(Name = "Nevera")]
     public string? NeveraLabel { get; set; }
 
+    [Required(ErrorMessage = "Debes indicar {0}.")]
     [UIHint("HariaAssociation")]
     [Display(Name = "ListaCompra")]
     public int? ListaCompraId { get; set; }
