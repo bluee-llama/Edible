@@ -41,8 +41,15 @@ public partial class ComentarioController : Controller
     public async Task<IActionResult> Index()
     {
     /*PROTECTED REGION ID(ComentarioController_Index_GET_body) START*/
-
         var entities = await _comentarioService.ReadAllAsync();
+        if (!User.IsInRole("Administrador"))
+        {
+            var currentUserId = int.TryParse(User.Identity?.Name, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var id) ? id : (int?)null;
+            entities = entities
+                .Where(entity => entity.Comentador is not null && entity.Comentador.Id == currentUserId)
+                .ToList();
+        }
         return View(entities.Select(ComentarioAssembler.ToViewModel).ToList());
     /*PROTECTED REGION END*/
     }

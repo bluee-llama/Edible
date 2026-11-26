@@ -7,6 +7,7 @@ using Edible.Application.Services;
 using Edible.Application.Exceptions;
 using Edible.Web.Assemblers;
 using Edible.Web.ViewModels;
+using Edible.Application.UseCases.Comentario;
 
 using Edible.Domain.Enums;
 /*PROTECTED REGION END*/
@@ -37,6 +38,84 @@ public partial class ComentarioController
     // Solo el autor o un administrador (moderación) pueden editar/borrar un comentario.
     private bool CanModify(Comentario entity) =>
         IsAdministrador || (entity.Comentador is not null && entity.Comentador.Id == CurrentUserId);
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublicarComentario(
+        int recetaId,
+        string titulo,
+        string? contenido,
+        int valoracion,
+        IFormFile? imagenUpload)
+    {
+        if (CurrentUserId is not int currentUserId)
+            return Challenge();
+        if (recetaId <= 0)
+            return BadRequest();
+        if (string.IsNullOrWhiteSpace(titulo))
+        {
+            TempData["ComentarioError"] = "El título es obligatorio.";
+            return RedirectToAction("Details", "Receta", new { id = recetaId });
+        }
+        if (valoracion < 1 || valoracion > 5)
+        {
+            TempData["ComentarioError"] = "La valoración debe estar entre 1 y 5.";
+            return RedirectToAction("Details", "Receta", new { id = recetaId });
+        }
+
+        var cancellationToken = HttpContext?.RequestAborted ?? CancellationToken.None;
+        if (imagenUpload is not null)
+        {
+            try { await _files.ValidateAsync(imagenUpload, cancellationToken); }
+            catch (InvalidDataException error)
+            {
+                TempData["ComentarioError"] = error.Message;
+                return RedirectToAction("Details", "Receta", new { id = recetaId });
+            }
+        }
+
+        try
+        {
+            await using var unitOfWork = _useCaseUnitOfWorkFactory.Create();
+            var useCase = new ComentarioUseCase(unitOfWork);
+            var comentario = await useCase.RecalcularValoracionMediaAsync(
+                1, titulo.Trim(), valoracion, currentUserId, recetaId);
+
+            var contenidoPersistido = string.IsNullOrWhiteSpace(contenido) ? null : contenido.Trim();
+            string? imagenPersistida = null;
+            if (imagenUpload is not null)
+                imagenPersistida = await _files.SaveAsync(imagenUpload, "Comentario", "Imagen", comentario.Id, cancellationToken);
+
+            await using var saveUnitOfWork = _formUnitOfWorkFactory.Create();
+            var saveService = new ComentarioService(saveUnitOfWork);
+            await saveUnitOfWork.BeginTransactionAsync("MVC.Comentario.PublicarComentario");
+            var comentarioGuardado = await saveService.ReadOIDComentarioDefaultAsync(comentario.Id);
+            if (comentarioGuardado is null)
+            {
+                await saveUnitOfWork.RollbackAsync();
+                if (imagenPersistida is not null) await _files.DeleteNewAsync(imagenPersistida);
+                TempData["ComentarioError"] = "No se ha podido recuperar el comentario publicado.";
+                return RedirectToAction("Details", "Receta", new { id = recetaId });
+            }
+            comentarioGuardado.Contenido = contenidoPersistido;
+            comentarioGuardado.Imagen = imagenPersistida;
+            await saveService.ModifierComentarioDefaultAsync(comentarioGuardado);
+            await saveUnitOfWork.CommitAsync();
+
+            TempData["ComentarioSuccess"] = "Comentario publicado correctamente.";
+        }
+        catch (ModelException error)
+        {
+            TempData["ComentarioError"] = error.InnerException?.Message ?? error.Message;
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "No se pudo publicar el comentario de la receta {RecetaId}.", recetaId);
+            TempData["ComentarioError"] = "No se ha podido publicar el comentario.";
+        }
+
+        return RedirectToAction("Details", "Receta", new { id = recetaId });
+    }
 
     // ------------------------------------------------------------------
     // RecalcularValoracionMedia (CustomTransaction)

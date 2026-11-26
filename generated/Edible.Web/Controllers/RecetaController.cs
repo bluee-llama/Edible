@@ -48,10 +48,16 @@ public partial class RecetaController : Controller
     public async Task<IActionResult> Details(int id)
     {
     /*PROTECTED REGION ID(RecetaController_Details_GET_body) ENABLED START*/
-
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
         ViewData["UsuarioOptions"] = await RecetaWebSupport.LoadUsuarioOptionsAsync(_formUnitOfWorkFactory, User, entity.Chef?.Id);
+
+        await using var unitOfWork = _formUnitOfWorkFactory.Create();
+        var comentarios = await unitOfWork.ComentarioRepository.ReadAllAsync();
+        ViewData["Comentarios"] = comentarios
+            .Where(comentario => comentario.Receta is not null && comentario.Receta.Id == id)
+            .Select(ComentarioAssembler.ToViewModel)
+            .ToList();
         return View(RecetaAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }

@@ -1,0 +1,100 @@
+@model IReadOnlyList<Edible.Web.ViewModels.ComentarioViewModel>
+
+@{
+    var esAdmin = User.IsInRole("Administrador");
+    var usuarioActual = int.TryParse(User.Identity?.Name,
+        System.Globalization.NumberStyles.Integer,
+        System.Globalization.CultureInfo.InvariantCulture, out var id) ? id : (int?)null;
+    var recetaId = (int)ViewContext.RouteData.Values["id"]!;
+}
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-body p-4">
+        <h2 class="h4 mb-1">Comentarios y valoraciones</h2>
+        <p class="text-body-secondary mb-0">Opiniones de la comunidad sobre esta receta.</p>
+    </div>
+    <div class="card-body p-4">
+        @if (TempData["ComentarioSuccess"] is string ok)
+        {
+            <div class="alert alert-success" role="status">@ok</div>
+        }
+        @if (TempData["ComentarioError"] is string error)
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+
+        @if (Model.Count == 0)
+        {
+            <p class="text-body-secondary">Todavía no hay comentarios.</p>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3 mb-4">
+                @foreach (var comentario in Model)
+                {
+                    <article class="border rounded p-3">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <strong>@comentario.ComentadorLabel</strong>
+                                <span class="badge text-bg-warning ms-2">@comentario.Valoracion / 5 ★</span>
+                                <h3 class="h6 mt-2 mb-1">@comentario.Titulo</h3>
+                                @if (!string.IsNullOrWhiteSpace(comentario.Contenido))
+                                {
+                                    <p class="mb-2">@comentario.Contenido</p>
+                                }
+                            </div>
+                            @if (esAdmin || comentario.ComentadorId == usuarioActual)
+                            {
+                                <form asp-controller="Comentario" asp-action="Delete" asp-route-id="@comentario.Id"
+                                      method="post" onsubmit="return confirm('¿Eliminar este comentario?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                </form>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(comentario.Imagen))
+                        {
+                            <img src="@Url.Content("~/" + comentario.Imagen.TrimStart('/'))"
+                                 alt="Imagen del comentario" class="img-thumbnail mt-2"
+                                 style="max-width: 220px; max-height: 160px;" loading="lazy" />
+                        }
+                    </article>
+                }
+            </div>
+        }
+
+        <hr />
+        <h3 class="h5">Publicar un comentario</h3>
+        <form asp-controller="Comentario" asp-action="PublicarComentario"
+              method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="recetaId" value="@recetaId" />
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label for="comentario-titulo" class="form-label">Título</label>
+                    <input id="comentario-titulo" name="titulo" class="form-control" maxlength="200" required />
+                </div>
+                <div class="col-md-4">
+                    <label for="comentario-valoracion" class="form-label">Valoración</label>
+                    <select id="comentario-valoracion" name="valoracion" class="form-select" required>
+                        @for (var i = 5; i >= 1; i--)
+                        {
+                            <option value="@i">@i estrellas</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label for="comentario-contenido" class="form-label">Contenido</label>
+                    <textarea id="comentario-contenido" name="contenido" class="form-control" rows="4" maxlength="2000"></textarea>
+                </div>
+                <div class="col-12">
+                    <label for="comentario-imagen" class="form-label">Imagen opcional</label>
+                    <input id="comentario-imagen" name="imagenUpload" type="file" accept="image/png,image/jpeg" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Publicar comentario</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
