@@ -52,8 +52,6 @@ public partial class RecetaController : Controller
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
         ViewData["UsuarioOptions"] = await RecetaWebSupport.LoadUsuarioOptionsAsync(_formUnitOfWorkFactory, User, entity.Chef?.Id);
-        ViewData["Nutricion"] = RecetaWebSupport.CalcularNutricion(entity);
-        ViewData["PuedoCocinarla"] = await RecetaWebSupport.PuedeCocinarseConMiNeveraAsync(_formUnitOfWorkFactory, _recetaService, User, id);
         return View(RecetaAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -64,12 +62,10 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
-    /*PROTECTED REGION ID(RecetaController_Create_GET_body) ENABLED START*/
+    /*PROTECTED REGION ID(RecetaController_Create_GET_body) START*/
 
         var model = new Edible.Web.ViewModels.RecetaViewModel();
         model.Lineas.Add(new());
-        // CU-10: un Chef publica sus propias recetas, así que su autor se asigna solo.
-        if (!RecetaWebSupport.IsAdmin(User)) model.ChefId = RecetaWebSupport.CurrentUserId(User);
         await LoadFormOptionsAsync(model);
         return View(model);
     /*PROTECTED REGION END*/
@@ -82,7 +78,7 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.RecetaViewModel model)
     {
-    /*PROTECTED REGION ID(RecetaController_Create_POST_body) ENABLED START*/
+    /*PROTECTED REGION ID(RecetaController_Create_POST_body) START*/
 
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
@@ -94,8 +90,6 @@ public partial class RecetaController : Controller
         model.Lineas ??= new();
         if (model.Pasos.Count > 500) return BadRequest("Número de líneas no válido (máximo 500).");
         if (model.Lineas.Count > 500) return BadRequest("Número de líneas no válido (máximo 500).");
-        // CU-10: un Chef (no administrador) solo puede crear recetas a su nombre.
-        if (!RecetaWebSupport.IsAdmin(User)) model.ChefId = RecetaWebSupport.CurrentUserId(User);
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.ChefId is int selectedChef &&
             !model.ChefOptions.Any(option => option.Value == Convert.ToString(selectedChef, System.Globalization.CultureInfo.InvariantCulture)))
@@ -169,12 +163,10 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id)
     {
-    /*PROTECTED REGION ID(RecetaController_Edit_GET_body) ENABLED START*/
+    /*PROTECTED REGION ID(RecetaController_Edit_GET_body) START*/
 
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
-        // CU-15: un Chef solo edita sus recetas; el administrador, cualquiera.
-        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
         var model = RecetaAssembler.ToViewModel(entity);
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -188,7 +180,7 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.RecetaViewModel model)
     {
-    /*PROTECTED REGION ID(RecetaController_Edit_POST_body) ENABLED START*/
+    /*PROTECTED REGION ID(RecetaController_Edit_POST_body) START*/
 
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
@@ -196,9 +188,6 @@ public partial class RecetaController : Controller
 
         var entity = await service.ReadOIDRecetaDefaultAsync(id);
         if (entity is null) return NotFound();
-        // CU-15: solo el autor (Chef) o el administrador pueden modificar la receta; el autor no se reasigna.
-        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
-        if (!RecetaWebSupport.IsAdmin(User)) model.ChefId = entity.Chef?.Id;
 
         model.Pasos ??= new();
         model.Lineas ??= new();
@@ -279,12 +268,10 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Delete(int id)
     {
-    /*PROTECTED REGION ID(RecetaController_Delete_GET_body) ENABLED START*/
+    /*PROTECTED REGION ID(RecetaController_Delete_GET_body) START*/
 
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
-        // CU-15 / CU-16: un Chef solo borra sus recetas; el administrador puede borrar cualquiera.
-        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
         return View(RecetaAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -297,12 +284,9 @@ public partial class RecetaController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-    /*PROTECTED REGION ID(RecetaController_DeleteConfirmed_POST_body) ENABLED START*/
+    /*PROTECTED REGION ID(RecetaController_DeleteConfirmed_POST_body) START*/
 
         if (!ModelState.IsValid) return View("Delete", new Edible.Web.ViewModels.RecetaViewModel());
-        var entity = await _recetaService.ReadOIDAsync(id);
-        if (entity is null) return NotFound();
-        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
         await _recetaService.DestroyAsync(id);
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/

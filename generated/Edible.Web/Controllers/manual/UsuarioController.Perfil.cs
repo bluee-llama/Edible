@@ -18,4 +18,18 @@ public partial class UsuarioController
         if (id is null) return Challenge();
         return RedirectToAction(nameof(Details), new { id });
     }
+
+    /// <summary>
+    /// Perfil público de un usuario o chef (REQ-14): nombre, dieta y recetas publicadas.
+    /// Solo se puede abrir si el perfil es público, o si es el propio usuario o un Administrador.
+    /// No expone datos privados (recetas guardadas ni comentarios).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> PerfilPublico(int id)
+    {
+        var perfil = await UsuarioWebSupport.BuildPerfilAsync(HttpContext.RequestServices, id, incluirPrivado: false);
+        if (perfil is null) return NotFound();
+        if (!perfil.Publico && !User.CanManageUsuario(id)) return Forbid();
+        return View(perfil);
+    }
 }

@@ -1,0 +1,85 @@
+@* Recetas publicadas, guardadas/sugeridas y comentarios de un perfil (CU-03, REQ-02). *@
+@model Edible.Web.ViewModels.PerfilExtrasViewModel
+@{
+    var propio = Edible.Web.Utils.Security.HariaWebUserExtensions.GetUsuarioId(User) == Model.UsuarioId;
+    var posesivo = propio ? "Tus" : "Sus";
+}
+
+<div class="row justify-content-center mt-4">
+    <div class="col-xl-9 d-flex flex-column gap-4">
+        @if (Model.EsChef)
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-body d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">@posesivo recetas publicadas</h2>
+                    @if (propio)
+                    {
+                        <a class="btn btn-sm btn-primary" asp-controller="Receta" asp-action="Create">Nueva receta</a>
+                    }
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Publicadas.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">Todavía no hay recetas publicadas.</p>
+                    }
+                    else
+                    {
+                        <partial name="_RecetaMiniList" model="Model.Publicadas" />
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body">
+                <h2 class="h5 mb-0">Recetas guardadas / sugeridas para @(propio ? "ti" : "este usuario")</h2>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Sugeridas.Count == 0)
+                {
+                    <p class="text-body-secondary small m-3">Nadie ha compartido recetas todavía. Cuando alguien te sugiera una, aparecerá aquí.</p>
+                }
+                else
+                {
+                    <partial name="_RecetaMiniList" model="Model.Sugeridas" />
+                }
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body">
+                <h2 class="h5 mb-0">@posesivo comentarios publicados</h2>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Comentarios.Count == 0)
+                {
+                    <p class="text-body-secondary small m-3">Todavía no hay comentarios.</p>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var comentario in Model.Comentarios)
+                        {
+                            <a class="list-group-item list-group-item-action" asp-controller="Receta" asp-action="Details" asp-route-id="@comentario.RecetaId">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <div class="fw-semibold">@comentario.Titulo <span class="text-body-secondary fw-normal">en @comentario.RecetaNombre</span></div>
+                                    <div class="text-nowrap">
+                                        <span class="badge text-bg-warning">★ @comentario.Valoracion/5</span>
+                                        @if (comentario.TieneImagen)
+                                        {
+                                            <span class="badge text-bg-secondary">con foto</span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(comentario.Extracto))
+                                {
+                                    <div class="small text-body-secondary">@comentario.Extracto</div>
+                                }
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

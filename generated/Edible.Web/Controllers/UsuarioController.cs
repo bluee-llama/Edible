@@ -55,6 +55,8 @@ public partial class UsuarioController : Controller
 
         var entity = await _usuarioService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        // CU-03 / REQ-02: recetas publicadas, guardadas/sugeridas y comentarios del perfil.
+        ViewData["Perfil"] = await UsuarioWebSupport.BuildPerfilAsync(HttpContext.RequestServices, id, incluirPrivado: true);
         return View(UsuarioAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }

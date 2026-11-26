@@ -1,4 +1,220 @@
-@* HARIA-WEB GENERATED sha256:8f8ec3988845d58a673b4ac9dfc8a716a77f52a855041accdde5e1ef9a481f96 *@
-@{ ViewData["Title"] = "Inicio"; }
+@model Edible.Web.ViewModels.HomeDashboardViewModel?
+@{
+    ViewData["Title"] = "Inicio";
+    var autenticado = User.Identity?.IsAuthenticated == true;
+    var esAdmin = User.IsInRole("Administrador");
+}
 
-<partial name="_BusinessNavigation" />
+@if (esAdmin)
+{
+    @* Administrador: panel backoffice con todas las entidades. *@
+    <partial name="_BusinessNavigation" />
+}
+else if (!autenticado)
+{
+    @* Anónimo: portada de bienvenida. *@
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-5 text-center">
+            <h1 class="display-6 mb-3">Edible</h1>
+            <p class="lead text-body-secondary mb-4">
+                Controla tu nevera y tu lista de la compra, descubre qué puedes cocinar con lo que tienes
+                y comparte recetas con otros usuarios.
+            </p>
+            <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center">
+                <a class="btn btn-primary btn-lg" asp-controller="Account" asp-action="Login">Iniciar sesión</a>
+                <a class="btn btn-outline-primary btn-lg" asp-controller="Usuario" asp-action="Register">Crear una cuenta</a>
+            </div>
+        </div>
+    </div>
+}
+else if (Model is null)
+{
+    <div class="alert alert-warning">
+        No hemos podido cargar tu panel (puede que tu cuenta ya no exista).
+        <a asp-controller="Account" asp-action="Login">Vuelve a iniciar sesión</a>.
+    </div>
+}
+else
+{
+    @* Usuario / Chef: dashboard (CU-06, CU-09). *@
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Hola, @Model.Nombre</h1>
+            <p class="text-body-secondary mb-0">
+                @(Model.EsChef ? "Chef" : "Usuario")
+                @if (Model.Dieta != Edible.Domain.Enums.DietaEspecial.ninguna)
+                {
+                    <span>· Dieta: @Model.Dieta</span>
+                }
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary" asp-controller="IngredienteNevera" asp-action="Index">Mi nevera</a>
+            <a class="btn btn-outline-primary" asp-controller="IngredienteCompra" asp-action="Index">Mi lista de la compra</a>
+            @if (Model.EsChef)
+            {
+                <a class="btn btn-primary" asp-controller="Receta" asp-action="Create">Nueva receta</a>
+            }
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" asp-controller="Receta" asp-action="BuscarNombre" class="row g-2 align-items-center">
+                <div class="col-12 col-md">
+                    <label for="p_nombre" class="visually-hidden">Buscar receta por nombre</label>
+                    <input type="text" id="p_nombre" name="p_nombre" class="form-control form-control-lg" placeholder="Buscar una receta por nombre…" />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-lg">Buscar</button>
+                </div>
+                <div class="col-auto">
+                    <a class="btn btn-outline-secondary btn-lg" asp-controller="Receta" asp-action="BusquedaAvanzada">Búsqueda avanzada</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-body d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Puedes cocinar con tu nevera</h2>
+                    @if (Model.NeveraId is int neveraId)
+                    {
+                        <a class="small" asp-controller="Receta" asp-action="RecetasPorNevera" asp-route-p_nevera_oid="@neveraId">Ver todas</a>
+                    }
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.ErrorCocinables)
+                    {
+                        <p class="text-body-secondary small m-3">No hemos podido calcularlo ahora mismo. Inténtalo de nuevo más tarde.</p>
+                    }
+                    else if (Model.Cocinables.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">
+                            Ninguna receta se puede preparar con tu stock actual.
+                            <a asp-controller="IngredienteNevera" asp-action="Create">Añade ingredientes a tu nevera</a>.
+                        </p>
+                    }
+                    else
+                    {
+                        <partial name="_RecetaMiniList" model="Model.Cocinables" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-body">
+                    <h2 class="h5 mb-0">Recomendadas para tu dieta</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Dieta == Edible.Domain.Enums.DietaEspecial.ninguna)
+                    {
+                        <p class="text-body-secondary small m-3">
+                            No tienes ninguna dieta especial configurada.
+                            <a asp-controller="Usuario" asp-action="Perfil">Cámbiala desde tu perfil</a> para ver recomendaciones.
+                        </p>
+                    }
+                    else if (Model.PorDieta.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">Todavía no hay recetas para la dieta «@Model.Dieta».</p>
+                    }
+                    else
+                    {
+                        <partial name="_RecetaMiniList" model="Model.PorDieta" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-body">
+                    <h2 class="h5 mb-0">Mejor valoradas</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.MejorValoradas.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">Aún no hay recetas valoradas.</p>
+                    }
+                    else
+                    {
+                        <partial name="_RecetaMiniList" model="Model.MejorValoradas" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-body">
+                    <h2 class="h5 mb-0">Recetas recientes</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Recientes.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">Aún no hay recetas.</p>
+                    }
+                    else
+                    {
+                        <partial name="_RecetaMiniList" model="Model.Recientes" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-body">
+                    <h2 class="h5 mb-0">Compartidas contigo</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Compartidas.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">Nadie ha compartido recetas contigo todavía.</p>
+                    }
+                    else
+                    {
+                        <partial name="_RecetaMiniList" model="Model.Compartidas" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-body">
+                    <h2 class="h5 mb-0">Chefs destacados</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.ChefsDestacados.Count == 0)
+                    {
+                        <p class="text-body-secondary small m-3">No hay chefs con perfil público todavía.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var chef in Model.ChefsDestacados)
+                            {
+                                <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                                   asp-controller="Usuario" asp-action="PerfilPublico" asp-route-id="@chef.Id">
+                                    <span class="fw-semibold">@chef.Nombre</span>
+                                    <span class="text-nowrap">
+                                        <span class="badge text-bg-secondary">@chef.NumRecetas @(chef.NumRecetas == 1 ? "receta" : "recetas")</span>
+                                        @if (chef.NotaMedia > 0)
+                                        {
+                                            <span class="badge text-bg-warning">★ @chef.NotaMedia.ToString("0.0")</span>
+                                        }
+                                    </span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

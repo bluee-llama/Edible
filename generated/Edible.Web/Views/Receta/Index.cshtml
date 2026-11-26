@@ -1,10 +1,8 @@
-@* HARIA-WEB MANUAL: vista editada a mano (accesos a búsquedas; crear solo Chef/Administrador; editar y borrar solo el autor o el administrador) *@
-@using Edible.Web.Controllers
+@* HARIA-WEB GENERATED sha256:4647f8e9f3914038f527f18d77832054af5e99e1164c5109ca6f050503da77c3 *@
 @model IEnumerable<Edible.Web.ViewModels.RecetaViewModel>
 
 @{
     ViewData["Title"] = "Receta";
-    var puedeCrear = RecetaWebSupport.CanCreateReceta(User);
 }
 
 <div class="card border-0 shadow-sm">
@@ -13,18 +11,11 @@
             <h1 class="h3 mb-1">Receta</h1>
             <p class="text-body-secondary mb-0">Consulta y gestiona los registros disponibles.</p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a asp-action="BuscarNombre" class="btn btn-outline-secondary">Buscar por nombre</a>
-            <a asp-action="RecetasPorNevera" class="btn btn-outline-secondary">Recetas con mi nevera</a>
-            <a asp-action="ComprobarIngredientes" class="btn btn-outline-secondary">Comprobar ingredientes</a>
+        <div class="d-flex flex-column flex-sm-row gap-2">
             <a asp-action="BusquedaAvanzada" class="btn btn-outline-primary">Búsqueda avanzada</a>
-            @if (puedeCrear)
-            {
-                <a asp-action="Create" class="btn btn-primary">Crear</a>
-            }
+            <a asp-action="Create" class="btn btn-primary">Crear</a>
         </div>
     </div>
-    <partial name="_Mensajes" />
     <div class="card-body p-0">
     @if (Model.Any())
     {
@@ -57,11 +48,8 @@
                             <td>@Html.DisplayFor(modelItem => item.ChefLabel)</td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
-                                @if (RecetaWebSupport.CanManageReceta(User, item.ChefId))
-                                {
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
-                                }
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
                             </td>
                     </tr>
                 }
@@ -73,11 +61,8 @@
     {
         <div class="text-center p-5">
             <h2 class="h5">Todavía no hay registros</h2>
-            @if (puedeCrear)
-            {
-                <p class="text-body-secondary">Crea el primer registro para comenzar.</p>
-                <a asp-action="Create" class="btn btn-primary">Crear</a>
-            }
+            <p class="text-body-secondary">Crea el primer registro para comenzar.</p>
+            <a asp-action="Create" class="btn btn-primary">Crear</a>
         </div>
     }
     </div>

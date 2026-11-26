@@ -7,6 +7,8 @@ builder.Services.AddControllersWithViews();
 // HARIA-WEB: FILE STORAGE
 builder.Services.Configure<Edible.Web.Utils.Files.HariaWebFileOptions>(builder.Configuration.GetSection("HariaWeb:Files"));
 builder.Services.AddScoped<Edible.Web.Utils.Files.IWebFileStorage, Edible.Web.Utils.Files.HariaWebFileStorage>();
+// Consulta manual de solo lectura: recetas compartidas con un usuario (portada y perfil).
+builder.Services.AddScoped<Edible.Application.Abstractions.IRecetasCompartidasQuery, Edible.Infrastructure.Queries.RecetasCompartidasQuery>();
 // HARIA-WEB: LOCALIZATION SERVICES
 Edible.Web.Utils.Localization.HariaWebLocalization.AddHariaWebLocalization(builder.Services, builder.Configuration);
 // HARIA-WEB: USER SESSION SERVICES

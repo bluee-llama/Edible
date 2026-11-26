@@ -1,0 +1,47 @@
+@model Edible.Web.ViewModels.PerfilExtrasViewModel
+@{
+    ViewData["Title"] = "Perfil de " + Model.Nombre;
+}
+
+<div class="row justify-content-center">
+    <div class="col-xl-9">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Perfil</span>
+                <h1 class="h3 mb-2">@Model.Nombre</h1>
+                <div class="d-flex flex-wrap gap-2">
+                    @if (Model.EsChef)
+                    {
+                        <span class="badge text-bg-primary">Chef</span>
+                    }
+                    @if (Model.Dieta != Edible.Domain.Enums.DietaEspecial.ninguna)
+                    {
+                        <span class="badge text-bg-success-subtle text-success-emphasis">Dieta: @Model.Dieta</span>
+                    }
+                    @if (!Model.Publico)
+                    {
+                        <span class="badge text-bg-warning">Perfil privado</span>
+                    }
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.EsChef)
+                {
+                    <p class="text-body-secondary m-4">Este usuario no publica recetas.</p>
+                }
+                else if (Model.Publicadas.Count == 0)
+                {
+                    <p class="text-body-secondary m-4">Este chef todavía no ha publicado recetas.</p>
+                }
+                else
+                {
+                    <h2 class="h5 px-4 pt-4">Recetas publicadas (@Model.Publicadas.Count)</h2>
+                    <partial name="_RecetaMiniList" model="Model.Publicadas" />
+                }
+            </div>
+            <div class="card-footer bg-body p-4">
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Volver al inicio</a>
+            </div>
+        </div>
+    </div>
+</div>

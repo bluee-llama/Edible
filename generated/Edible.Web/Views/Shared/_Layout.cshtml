@@ -25,46 +25,45 @@
                     }
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Inicio</a></li>
-                        @if (autenticado)
+                        @if (autenticado && esAdmin)
                         {
+                            @* Administrador: backoffice con todas las entidades. *@
+                            <li class="nav-item"><a class="nav-link" asp-controller="Receta" asp-action="Index">Recetas</a></li>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Mi cocina</a>
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Administración (Backoffice)</a>
                                 <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Usuario" asp-action="Index">Usuarios</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Chef" asp-action="Index">Chefs</a></li>
                                     <li><a class="dropdown-item" asp-controller="Nevera" asp-action="Index">Neveras</a></li>
-                                    <li><a class="dropdown-item" asp-controller="IngredienteNevera" asp-action="Index">Ingredientes en la nevera</a></li>
                                     <li><a class="dropdown-item" asp-controller="ListaCompra" asp-action="Index">Listas de la compra</a></li>
+                                    <li><a class="dropdown-item" asp-controller="IngredienteNevera" asp-action="Index">Ingredientes en nevera</a></li>
                                     <li><a class="dropdown-item" asp-controller="IngredienteCompra" asp-action="Index">Ingredientes de la compra</a></li>
-                                </ul>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Recetas</a>
-                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-controller="Ingrediente" asp-action="Index">Ingredientes (catálogo)</a></li>
                                     <li><a class="dropdown-item" asp-controller="Receta" asp-action="Index">Recetas</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Receta" asp-action="BusquedaAvanzada">Búsqueda avanzada</a></li>
+                                    <li><a class="dropdown-item" asp-controller="LineaReceta" asp-action="Index">Líneas de receta</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Paso" asp-action="Index">Pasos</a></li>
                                     <li><a class="dropdown-item" asp-controller="Comentario" asp-action="Index">Comentarios</a></li>
                                 </ul>
                             </li>
                         }
-                        @if (esChef || esAdmin)
+                        else if (autenticado)
                         {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Catálogo (Chef)</a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" asp-controller="Ingrediente" asp-action="Index">Ingredientes</a></li>
-                                    <li><a class="dropdown-item" asp-controller="LineaReceta" asp-action="Index">Líneas de receta</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Paso" asp-action="Index">Pasos</a></li>
-                                </ul>
-                            </li>
-                        }
-                        @if (esAdmin)
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Administración</a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" asp-controller="Usuario" asp-action="Index">Usuarios</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Chef" asp-action="Index">Chefs</a></li>
-                                </ul>
-                            </li>
+                            @* Usuario / Chef: la experiencia real de la aplicación. *@
+                            <li class="nav-item"><a class="nav-link" asp-controller="IngredienteNevera" asp-action="Index">Mi nevera</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-controller="IngredienteCompra" asp-action="Index">Mi lista de la compra</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-controller="Receta" asp-action="Index">Recetas</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-controller="Receta" asp-action="BusquedaAvanzada">Búsqueda avanzada</a></li>
+                            @if (esChef)
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Catálogo (Chef)</a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" asp-controller="Ingrediente" asp-action="Index">Ingredientes</a></li>
+                                        <li><a class="dropdown-item" asp-controller="LineaReceta" asp-action="Index">Líneas de receta</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Paso" asp-action="Index">Pasos</a></li>
+                                    </ul>
+                                </li>
+                            }
                         }
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Privacy">Privacidad</a></li>
                     </ul>

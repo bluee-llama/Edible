@@ -57,6 +57,8 @@ public partial class ChefController : Controller
 
         var entity = await _chefService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        // CU-03 / REQ-02: recetas publicadas, guardadas/sugeridas y comentarios del perfil.
+        ViewData["Perfil"] = await UsuarioWebSupport.BuildPerfilAsync(HttpContext.RequestServices, id, incluirPrivado: true);
         return View(ChefAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
