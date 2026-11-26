@@ -47,11 +47,22 @@
             <input asp-for="Dificultad" class="form-control" />
             <span asp-validation-for="Dificultad" class="text-danger"></span>
         </div>
-        <div class="mb-3">
-            <label asp-for="ChefId" class="form-label"></label>
-            <select asp-for="ChefId" asp-items="Model.ChefOptions" class="form-select"><option value="">Selecciona...</option></select>
-            <span asp-validation-for="ChefId" class="text-danger"></span>
-        </div>
+        @if (User.IsInRole("Administrador"))
+        {
+            <div class="mb-3">
+                <label asp-for="ChefId" class="form-label"></label>
+                <select asp-for="ChefId" asp-items="Model.ChefOptions" class="form-select"><option value="">Selecciona...</option></select>
+                <span asp-validation-for="ChefId" class="text-danger"></span>
+            </div>
+        }
+        else
+        {
+            <input type="hidden" asp-for="ChefId" />
+            <div class="mb-3">
+                <label class="form-label">Chef</label>
+                <p class="form-control-plaintext">@Model.ChefOptions.FirstOrDefault(option => option.Value == Model.ChefId?.ToString())?.Text</p>
+            </div>
+        }
         <partial name="_Pasos" model="Model" />
         <partial name="_Lineas" model="Model" />
                 </div>

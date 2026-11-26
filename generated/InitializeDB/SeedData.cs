@@ -340,6 +340,89 @@ public static class SeedData
                 }
             }
 
+            // ---- Recetas reales (Ortega): recetas, líneas e instrucciones para los chefs de prueba ----
+            {
+                var orChefs = (await unitOfWork.ChefRepository.ReadAllAsync()).ToList();
+                var orIngredientes = (await unitOfWork.IngredienteRepository.ReadAllAsync())
+                    .ToDictionary(ingrediente => ingrediente.Nombre, StringComparer.OrdinalIgnoreCase);
+                var orExistentes = (await recetaService.ReadAllAsync()).ToList();
+                var orPasos = new PasoService(unitOfWork);
+                var orDefiniciones = new[]
+                {
+                    new
+                    {
+                        Nombre = "Tortilla de patatas",
+                        Descripcion = "Tortilla jugosa de patata, cebolla y huevo.",
+                        Dieta = DietaEspecial.vegetariana, Tiempo = 40, Dificultad = 2, Chef = "chef_pepe",
+                        Ingredientes = new (string Nombre, int Cantidad)[] { ("Huevo", 120), ("Patata", 300), ("Cebolla", 60), ("Aceite de Oliva", 20), ("Sal", 4) },
+                        Pasos = new (string Nombre, string Descripcion)[] { ("Preparar", "Pelar y cortar las patatas y la cebolla; cocinar a fuego medio hasta que estén tiernas."), ("Cuajar", "Mezclar con el huevo batido y cuajar la tortilla por ambos lados.") }
+                    },
+                    new
+                    {
+                        Nombre = "Pollo al horno con verduras",
+                        Descripcion = "Pollo asado con patata, zanahoria y un toque de aceite de oliva.",
+                        Dieta = DietaEspecial.sinGluten, Tiempo = 55, Dificultad = 2, Chef = "chef_pepe",
+                        Ingredientes = new (string Nombre, int Cantidad)[] { ("Pechuga de Pollo", 300), ("Patata", 250), ("Zanahoria", 100), ("Cebolla", 80), ("Aceite de Oliva", 15), ("Sal", 4) },
+                        Pasos = new (string Nombre, string Descripcion)[] { ("Preparar la bandeja", "Cortar las verduras, colocarlas en una fuente y añadir el pollo."), ("Asar", "Aliñar con aceite y sal y hornear hasta que el pollo esté bien cocinado.") }
+                    },
+                    new
+                    {
+                        Nombre = "Ensalada templada de garbanzos",
+                        Descripcion = "Garbanzos con tomate, cebolla y aliño sencillo.",
+                        Dieta = DietaEspecial.vegana, Tiempo = 20, Dificultad = 1, Chef = "chef_ana",
+                        Ingredientes = new (string Nombre, int Cantidad)[] { ("Garbanzos", 160), ("Tomate", 150), ("Cebolla", 30), ("Aceite de Oliva", 10), ("Sal", 3) },
+                        Pasos = new (string Nombre, string Descripcion)[] { ("Cortar las verduras", "Lavar y cortar el tomate y la cebolla en dados pequeños."), ("Mezclar", "Calentar los garbanzos, mezclarlos con las verduras y aliñar.") }
+                    },
+                    new
+                    {
+                        Nombre = "Salmón con arroz",
+                        Descripcion = "Lomo de salmón a la plancha acompañado de arroz.",
+                        Dieta = DietaEspecial.sinGluten, Tiempo = 30, Dificultad = 2, Chef = "chef_ana",
+                        Ingredientes = new (string Nombre, int Cantidad)[] { ("Salmón", 300), ("Arroz Redondo", 160), ("Aceite de Oliva", 10), ("Sal", 3) },
+                        Pasos = new (string Nombre, string Descripcion)[] { ("Cocer el arroz", "Cocer el arroz en agua con sal hasta que quede tierno."), ("Cocinar el salmón", "Marcar el salmón en una sartén con aceite y servir junto al arroz.") }
+                    },
+                    new
+                    {
+                        Nombre = "Pasta con tomate y mozzarella",
+                        Descripcion = "Pasta con salsa casera de tomate, cebolla y mozzarella.",
+                        Dieta = DietaEspecial.vegetariana, Tiempo = 25, Dificultad = 1, Chef = "chef_pepe",
+                        Ingredientes = new (string Nombre, int Cantidad)[] { ("Pasta de Trigo", 160), ("Tomate", 200), ("Cebolla", 50), ("Queso Mozzarella", 80), ("Aceite de Oliva", 10), ("Sal", 3) },
+                        Pasos = new (string Nombre, string Descripcion)[] { ("Preparar la salsa", "Sofreír la cebolla, añadir el tomate y cocinar hasta obtener una salsa espesa."), ("Cocer y servir", "Cocer la pasta, mezclarla con la salsa y terminar con mozzarella.") }
+                    }
+                };
+                var orSembradas = 0;
+                foreach (var definicion in orDefiniciones)
+                {
+                    if (orExistentes.Any(receta => string.Equals(receta.Nombre, definicion.Nombre, StringComparison.OrdinalIgnoreCase)))
+                        continue;
+
+                    var chef = orChefs.FirstOrDefault(item =>
+                        string.Equals(item.Name, definicion.Chef, StringComparison.OrdinalIgnoreCase))
+                        ?? throw new InvalidOperationException($"No se encuentra el chef '{definicion.Chef}' para sembrar recetas.");
+                    var lineas = definicion.Ingredientes.Select(item =>
+                        new LineaReceta
+                        {
+                            CantidadNecesaria = item.Cantidad,
+                            IngredienteCatalogo = orIngredientes.TryGetValue(item.Nombre, out var ingrediente)
+                                ? ingrediente
+                                : throw new InvalidOperationException($"No se encuentra el ingrediente '{item.Nombre}' para sembrar recetas.")
+                        }).ToList();
+
+                    var receta = await recetaService.NewAsync(
+                        definicion.Nombre, definicion.Descripcion, definicion.Dieta, 0f,
+                        definicion.Tiempo, definicion.Dificultad, chef.Id, lineas);
+                    foreach (var paso in definicion.Pasos)
+                        await orPasos.NewAsync(paso.Nombre, paso.Descripcion, receta.Id);
+                    orExistentes.Add(receta);
+                    orSembradas++;
+                }
+
+                Ensure(orExistentes.Count(receta => orDefiniciones.Any(definicion =>
+                    string.Equals(definicion.Nombre, receta.Nombre, StringComparison.OrdinalIgnoreCase))) == orDefiniciones.Length,
+                    $"Las {orDefiniciones.Length} recetas reales de Ortega tienen chef, ingredientes y pasos.");
+                Console.WriteLine($"[OK] Recetas reales sembradas o ya existentes: {orExistentes.Count(receta => orDefiniciones.Any(definicion => string.Equals(definicion.Nombre, receta.Nombre, StringComparison.OrdinalIgnoreCase)))} (nuevas: {orSembradas}).");
+            }
+
             // ---- Comunidad (Rodrigo): comentarios iniciales con valoraciones variadas ----
             // Debe ejecutarse DESPUÉS del seed de usuarios y recetas del resto del equipo (mantener este bloque
             // el último de la región al integrar). No falla si todavía no hay usuarios o recetas.

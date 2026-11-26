@@ -198,8 +198,10 @@ public sealed class ManualOperationTests
         await using var scenario = await TestFixture.CreateScenarioAsync();
         var recetaService = new RecetaService(scenario.UnitOfWork);
         var chef = await RecetaScenarioHelper.CrearChefAsync(scenario.UnitOfWork, "ChefCompartir");
+        var destinatario = await RecetaScenarioHelper.CrearUsuarioAsync(scenario.UnitOfWork, "UsuarioDestinatario");
         var receta = await RecetaScenarioHelper.CrearRecetaAsync(scenario.UnitOfWork, chef, "Receta compartir", DietaEspecial.ninguna, 4.0f, 10, 1);
         int recetaId = receta.Id;
+        int destinatarioId = destinatario.Id;
         /*PROTECTED REGION END*/
 
         var operationName = "compartir";
@@ -211,14 +213,18 @@ public sealed class ManualOperationTests
         if (executeManualInvocation)
         {
         /*PROTECTED REGION ID(test:custom:Receta:compartir:invoke) ENABLED START*/
-        await service!.CompartirAsync(recetaId);
+        await service!.CompartirAsync(recetaId, destinatarioId);
         /*PROTECTED REGION END*/
         }
         _ = invocationResult;
 
         /*PROTECTED REGION ID(test:custom:Receta:compartir:assert) ENABLED START*/
-        var recetaBD = await scenario.UnitOfWork.RecetaRepository.ReadAsync(recetaId);
-        Assert.NotNull(recetaBD);
+        await using (var fresh = scenario.CreateFreshUnitOfWork())
+        {
+            var recetaBD = await fresh.RecetaRepository.ReadAsync(recetaId);
+            Assert.NotNull(recetaBD);
+            Assert.Contains(recetaBD!.UsuariosSugeridos, usuario => usuario.Id == destinatarioId);
+        }
 
         EnsureContractOutput(operationName, operationType);
         /*PROTECTED REGION END*/

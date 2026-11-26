@@ -43,6 +43,7 @@ public sealed class RecetaRepository : RepositoryBase<Receta>, IRecetaRepository
                 if (entity is not null) await DbContext.Entry(entity).Collection(item => item.Pasos).LoadAsync();
                 if (entity is not null) await DbContext.Entry(entity).Collection(item => item.Lineas).LoadAsync();
                 if (entity is not null) foreach (var child in entity.Lineas) await DbContext.Entry(child).Reference(item => item.IngredienteCatalogo).LoadAsync();
+                if (entity is not null) await DbContext.Entry(entity).Collection(item => item.UsuariosSugeridos).LoadAsync();
             return entity;
         }
         catch (Exception ex)

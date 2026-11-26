@@ -51,6 +51,8 @@ public partial class RecetaController : Controller
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
         ViewData["UsuarioOptions"] = await RecetaWebSupport.LoadUsuarioOptionsAsync(_formUnitOfWorkFactory, User, entity.Chef?.Id);
+        ViewData["Nutricion"] = RecetaWebSupport.CalcularNutricion(entity);
+        ViewData["PuedeGestionar"] = RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id);
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var comentarios = await unitOfWork.ComentarioRepository.ReadAllAsync();
@@ -72,6 +74,11 @@ public partial class RecetaController : Controller
 
         var model = new Edible.Web.ViewModels.RecetaViewModel();
         model.Lineas.Add(new());
+        if (!RecetaWebSupport.IsAdmin(User))
+        {
+            model.ChefId = RecetaWebSupport.CurrentUserId(User);
+            if (model.ChefId is null) return Forbid();
+        }
         await LoadFormOptionsAsync(model);
         return View(model);
     /*PROTECTED REGION END*/
@@ -90,7 +97,11 @@ public partial class RecetaController : Controller
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.RecetaService(unitOfWork);
 
-
+        if (!RecetaWebSupport.IsAdmin(User))
+        {
+            model.ChefId = RecetaWebSupport.CurrentUserId(User);
+            if (model.ChefId is null) return Forbid();
+        }
 
         model.Pasos ??= new();
         model.Lineas ??= new();
@@ -173,6 +184,7 @@ public partial class RecetaController : Controller
 
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
         var model = RecetaAssembler.ToViewModel(entity);
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -194,6 +206,11 @@ public partial class RecetaController : Controller
 
         var entity = await service.ReadOIDRecetaDefaultAsync(id);
         if (entity is null) return NotFound();
+        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
+        if (!RecetaWebSupport.IsAdmin(User))
+        {
+            model.ChefId = entity.Chef?.Id;
+        }
 
         model.Pasos ??= new();
         model.Lineas ??= new();
@@ -278,6 +295,7 @@ public partial class RecetaController : Controller
 
         var entity = await _recetaService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
         return View(RecetaAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -292,7 +310,10 @@ public partial class RecetaController : Controller
     {
     /*PROTECTED REGION ID(RecetaController_DeleteConfirmed_POST_body) START*/
 
-        if (!ModelState.IsValid) return View("Delete", new Edible.Web.ViewModels.RecetaViewModel());
+        var entity = await _recetaService.ReadOIDAsync(id);
+        if (entity is null) return NotFound();
+        if (!RecetaWebSupport.CanManageReceta(User, entity.Chef?.Id)) return Forbid();
+        if (!ModelState.IsValid) return View("Delete", RecetaAssembler.ToViewModel(entity));
         await _recetaService.DestroyAsync(id);
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/

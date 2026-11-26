@@ -3,6 +3,10 @@
 
 @{
     ViewData["Title"] = "Detalles";
+    var nutricion = ViewData["Nutricion"] as Edible.Web.Controllers.RecetaNutricion;
+    var usuarios = ViewData["UsuarioOptions"] as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+        ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    var puedeGestionar = ViewData["PuedeGestionar"] is true;
 }
 
 <div class="row justify-content-center">
@@ -14,6 +18,7 @@
                 <p class="text-body-secondary mb-0">Review the complete record information.</p>
             </div>
             <div class="card-body p-4">
+                <partial name="_Mensajes" />
                 <dl class="row mb-0 gy-2">
             <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.Id)</dt>
             <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.Id)</dd>
@@ -32,13 +37,82 @@
             <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.ChefLabel)</dt>
             <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.ChefLabel)</dd>
                 </dl>
+                @if (nutricion is not null)
+                {
+                    <section class="mt-4" aria-labelledby="nutricion-heading">
+                        <h2 id="nutricion-heading" class="h5">Información nutricional total</h2>
+                        <p class="text-body-secondary small">Cálculo aproximado según las cantidades de cada ingrediente; los valores del catálogo se consideran por cada 100 g.</p>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3"><div class="border rounded p-3 h-100"><strong>@nutricion.Calorias kcal</strong><div class="small text-body-secondary">Calorías</div></div></div>
+                            <div class="col-6 col-md-3"><div class="border rounded p-3 h-100"><strong>@nutricion.Proteinas.ToString("0.0") g</strong><div class="small text-body-secondary">Proteínas</div></div></div>
+                            <div class="col-6 col-md-3"><div class="border rounded p-3 h-100"><strong>@nutricion.Carbohidratos.ToString("0.0") g</strong><div class="small text-body-secondary">Carbohidratos</div></div></div>
+                            <div class="col-6 col-md-3"><div class="border rounded p-3 h-100"><strong>@nutricion.Grasas.ToString("0.0") g</strong><div class="small text-body-secondary">Grasas</div></div></div>
+                        </div>
+                        @if (nutricion.IngredientesSinDatos > 0)
+                        {
+                            <p class="small text-body-secondary mt-2 mb-0">@nutricion.IngredientesSinDatos ingrediente(s) no tienen información nutricional completa.</p>
+                        }
+                    </section>
+                    <section class="mt-4" aria-labelledby="alergenos-heading">
+                        <h2 id="alergenos-heading" class="h5">Alérgenos</h2>
+                        @if (nutricion.Alergenos.Count == 0)
+                        {
+                            <p class="text-body-secondary mb-0">Sin alérgenos declarados.</p>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var alergeno in nutricion.Alergenos)
+                                {
+                                    <span class="badge text-bg-warning">@alergeno.ToString().Replace('_', ' ')</span>
+                                }
+                            </div>
+                        }
+                    </section>
+                }
                 <partial name="_PasosDetails" model="Model.Pasos" />
                 <partial name="_LineasDetails" model="Model.Lineas" />
 
+                <section class="mt-4" aria-labelledby="disponibilidad-heading">
+                    <h2 id="disponibilidad-heading" class="h5">Disponibilidad en mi nevera</h2>
+                    <form asp-action="ComprobarMiNevera" asp-route-id="@Model.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-success">Comprobar si puedo cocinarla</button>
+                    </form>
+                </section>
+
+                <section class="mt-4" aria-labelledby="compartir-heading">
+                    <h2 id="compartir-heading" class="h5">Compartir receta</h2>
+                    @if (usuarios.Count > 0)
+                    {
+                        <form asp-action="Compartir" asp-route-p_oid="@Model.Id" method="post" class="row g-2 align-items-end">
+                            @Html.AntiForgeryToken()
+                            <div class="col-sm-8 col-md-6">
+                                <label for="p_usuario_oid" class="form-label">Usuario destinatario</label>
+                                <select id="p_usuario_oid" name="p_usuario_oid" class="form-select" required>
+                                    <option value="">Selecciona un usuario...</option>
+                                    @foreach (var usuario in usuarios)
+                                    {
+                                        <option value="@usuario.Value">@usuario.Text</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-auto"><button type="submit" class="btn btn-outline-primary">Compartir</button></div>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="text-body-secondary mb-0">No hay otros usuarios disponibles para compartir esta receta.</p>
+                    }
+                </section>
             </div>
             <div class="card-footer bg-body p-4">
                 <div class="d-flex flex-column flex-sm-row gap-2">
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                @if (puedeGestionar)
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                    <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Eliminar</a>
+                }
                 <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
             </div>
             </div>

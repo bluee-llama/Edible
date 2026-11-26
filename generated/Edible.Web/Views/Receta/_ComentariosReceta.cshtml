@@ -5,7 +5,13 @@
     var usuarioActual = int.TryParse(User.Identity?.Name,
         System.Globalization.NumberStyles.Integer,
         System.Globalization.CultureInfo.InvariantCulture, out var id) ? id : (int?)null;
-    var recetaId = (int)ViewContext.RouteData.Values["id"]!;
+    var recetaIdTexto = Convert.ToString(ViewContext.RouteData.Values["id"],
+        System.Globalization.CultureInfo.InvariantCulture);
+    if (!int.TryParse(recetaIdTexto, System.Globalization.NumberStyles.Integer,
+        System.Globalization.CultureInfo.InvariantCulture, out var recetaId))
+    {
+        throw new InvalidOperationException("La vista de comentarios requiere un identificador de receta válido en la ruta.");
+    }
 }
 
 <div class="card border-0 shadow-sm mt-4">

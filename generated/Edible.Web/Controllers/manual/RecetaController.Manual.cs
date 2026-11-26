@@ -82,6 +82,26 @@ public partial class RecetaController
     /*PROTECTED REGION END*/
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ComprobarMiNevera(int id)
+    {
+        var receta = await _recetaService.ReadOIDAsync(id);
+        if (receta is null) return NotFound();
+
+        if (RecetaWebSupport.CurrentUserId(User) is null)
+            return Forbid();
+
+        var puedeCocinarse = await RecetaWebSupport.PuedeCocinarseConMiNeveraAsync(
+            _formUnitOfWorkFactory, _recetaService, User, id);
+        TempData[puedeCocinarse is true ? "Exito" : "Error"] = puedeCocinarse is null
+            ? "No tienes una nevera asociada a tu cuenta."
+            : puedeCocinarse.Value
+                ? $"Tienes ingredientes suficientes para preparar «{receta.Nombre}»."
+                : $"Te faltan ingredientes para preparar «{receta.Nombre}».";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
     /*PROTECTED REGION ID(RecetaController_manual_custom) ENABLED START*/
     /// <summary>Formulario GET de ComprobarIngredientesDisponibles (CustomTransaction); la comprobación va por POST + PRG.</summary>
     [HttpGet]
