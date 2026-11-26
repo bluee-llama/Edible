@@ -35,8 +35,12 @@ public partial class NeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Index()
     {
-    /*PROTECTED REGION ID(NeveraController_Index_GET_body) START*/
+    /*PROTECTED REGION ID(NeveraController_Index_GET_body) ENABLED START*/
 
+        if (!IsAdministrador)
+        {
+            return RedirectToAction("Index", "IngredienteNevera");
+        }
         var entities = await _neveraService.ReadAllAsync();
         return View(entities.Select(NeveraAssembler.ToViewModel).ToList());
     /*PROTECTED REGION END*/
@@ -47,16 +51,18 @@ public partial class NeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Details(int id)
     {
-    /*PROTECTED REGION ID(NeveraController_Details_GET_body) START*/
+    /*PROTECTED REGION ID(NeveraController_Details_GET_body) ENABLED START*/
 
         var entity = await _neveraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!IsAdministrador && entity.Usuario?.Id != CurrentUserId) return Forbid();
         return View(NeveraAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(NeveraController_Create_GET_attributes) START*/
+    /*PROTECTED REGION ID(NeveraController_Create_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
@@ -71,7 +77,8 @@ public partial class NeveraController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(NeveraController_Create_POST_attributes) START*/
+    /*PROTECTED REGION ID(NeveraController_Create_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.NeveraViewModel model)
     {

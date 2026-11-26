@@ -2,75 +2,107 @@
 @model IEnumerable<Edible.Web.ViewModels.IngredienteCompraViewModel>
 
 @{
-    ViewData["Title"] = "IngredienteCompra";
+    var esAdmin = User.IsInRole("Administrador");
+    var currentUserId = int.TryParse(User?.Identity?.Name, out var uid) ? uid : 0;
+    ViewData["Title"] = esAdmin ? "Ingredientes de Compra (Administración)" : "Mi Lista de la Compra";
+    var lista = Model.ToList();
+    var totalComprados = lista.Count(i => i.Comprado);
+    var totalPendientes = lista.Count - totalComprados;
 }
 
-@if (TempData["Success"] is string ok)
-{
-    <div class="alert alert-success" role="status">@ok</div>
-}
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger" role="alert">@error</div>
-}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-body d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 p-4">
         <div>
-            <h1 class="h3 mb-1">IngredienteCompra</h1>
-            <p class="text-body-secondary mb-0">Consulta y gestiona los registros disponibles.</p>
+            <h1 class="h3 mb-1">@(esAdmin ? "Ingredientes de Compra (Administración)" : "Mi Lista de la Compra")</h1>
+            <p class="text-body-secondary mb-0">
+                @(esAdmin
+                    ? "Consulta y gestiona los productos de todas las listas de la compra."
+                    : $"Tienes {totalPendientes} pendiente(s) y {totalComprados} marcado(s) como comprado(s).")
+            </p>
         </div>
         <div class="d-flex flex-column flex-sm-row gap-2">
-            <a asp-controller="Nevera" asp-action="RecorrerListaCompra" class="btn btn-outline-primary">Volcar comprados a nevera</a>
-            <a asp-action="Create" class="btn btn-primary">Crear</a>
+            @if (!esAdmin && totalComprados > 0 && currentUserId > 0)
+            {
+                <form asp-controller="Nevera" asp-action="RecorrerListaCompra" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="p_usuario_oid" value="@currentUserId" />
+                    <button type="submit" class="btn btn-success">Volcar comprados a mi nevera (@totalComprados)</button>
+                </form>
+            }
+            <a asp-controller="Nevera" asp-action="RecorrerListaCompra" class="btn btn-outline-primary">Ver resumen de volcado</a>
+            <a asp-action="Create" class="btn btn-primary">+ Añadir producto</a>
         </div>
     </div>
     <div class="card-body p-0">
-    @if (Model.Any())
+    @if (lista.Any())
     {
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th scope="col">@Html.DisplayNameFor(model => model.Id)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.Cantidad)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.Comprado)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.NeveraLabel)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.ListaCompraLabel)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.IngredienteCatalogoLabel)</th>
+                        @if (esAdmin)
+                        {
+                            <th scope="col">ID</th>
+                        }
+                        <th scope="col">Producto</th>
+                        <th scope="col">Cantidad</th>
+                        <th scope="col">Estado</th>
+                        @if (esAdmin)
+                        {
+                            <th scope="col">Nevera</th>
+                            <th scope="col">Lista de compra</th>
+                        }
                         <th scope="col" class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var item in Model)
+                @foreach (var item in lista)
                 {
-                    <tr>
-                            <td>@Html.DisplayFor(modelItem => item.Id)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Cantidad)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Comprado)</td>
-                            <td>@Html.DisplayFor(modelItem => item.NeveraLabel)</td>
-                            <td>@Html.DisplayFor(modelItem => item.ListaCompraLabel)</td>
-                            <td>@Html.DisplayFor(modelItem => item.IngredienteCatalogoLabel)</td>
-                            <td class="text-end text-nowrap">
-                                @if (!item.Comprado)
-                                {
-                                    <form asp-action="MarcarComprado" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="p_oid" value="@item.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-success">Marcar comprado</button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form asp-action="DesmarcarComprado" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="p_oid" value="@item.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-warning">Desmarcar</button>
-                                    </form>
-                                }
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
-                            </td>
+                    <tr class="@(item.Comprado ? "table-success" : null)">
+                        @if (esAdmin)
+                        {
+                            <td>@item.Id</td>
+                        }
+                        <td class="fw-semibold @(item.Comprado ? "text-decoration-line-through text-body-secondary" : null)">
+                            @item.IngredienteCatalogoLabel
+                        </td>
+                        <td><span class="badge text-bg-light border fs-6 px-2">@item.Cantidad</span></td>
+                        <td>
+                            @if (item.Comprado)
+                            {
+                                <span class="badge text-bg-success">Comprado</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Pendiente</span>
+                            }
+                        </td>
+                        @if (esAdmin)
+                        {
+                            <td>#@item.NeveraLabel</td>
+                            <td>#@item.ListaCompraLabel</td>
+                        }
+                        <td class="text-end text-nowrap">
+                            @if (!item.Comprado)
+                            {
+                                <form asp-action="MarcarComprado" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="p_oid" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success">✓ Marcar comprado</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-action="DesmarcarComprado" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="p_oid" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-warning">Desmarcar</button>
+                                </form>
+                            }
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                        </td>
                     </tr>
                 }
                 </tbody>
@@ -80,9 +112,9 @@
     else
     {
         <div class="text-center p-5">
-            <h2 class="h5">Todavía no hay registros</h2>
-            <p class="text-body-secondary">Crea el primer registro para comenzar.</p>
-            <a asp-action="Create" class="btn btn-primary">Crear</a>
+            <h2 class="h5">Tu lista de la compra está vacía</h2>
+            <p class="text-body-secondary">Añade los productos que necesites comprar y márcalos cuando los tengas listos para volcarlos a tu nevera.</p>
+            <a asp-action="Create" class="btn btn-primary">+ Añadir producto</a>
         </div>
     }
     </div>

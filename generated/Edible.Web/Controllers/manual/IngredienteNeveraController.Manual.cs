@@ -21,9 +21,35 @@ namespace Edible.Web.Controllers;
 /*PROTECTED REGION END*/
 public partial class IngredienteNeveraController
 {
+    private const string RolAdministrador = "Administrador";
+
+    private bool IsAdministrador => User.IsInRole(RolAdministrador);
+
     private int? CurrentUserId =>
         int.TryParse(User?.Identity?.Name, System.Globalization.NumberStyles.Integer,
             System.Globalization.CultureInfo.InvariantCulture, out var id) ? id : null;
+
+    private async Task<int?> GetCurrentUserNeveraIdAsync(Edible.Application.Abstractions.IUnitOfWork? existingUow = null)
+    {
+        if (CurrentUserId is not int uid) return null;
+        if (existingUow is not null)
+        {
+            var neveras = await existingUow.NeveraRepository.ReadAllAsync();
+            return neveras.FirstOrDefault(n => n.Usuario?.Id == uid)?.Id;
+        }
+
+        await using var uow = _formUnitOfWorkFactory.Create();
+        var todas = await uow.NeveraRepository.ReadAllAsync();
+        return todas.FirstOrDefault(n => n.Usuario?.Id == uid)?.Id;
+    }
+
+    private async Task<bool> CanAccessNeveraItemAsync(IngredienteNevera entity, Edible.Application.Abstractions.IUnitOfWork? existingUow = null)
+    {
+        if (IsAdministrador) return true;
+        if (entity.Nevera?.Usuario?.Id is int ownerId) return ownerId == CurrentUserId;
+        var myNeveraId = await GetCurrentUserNeveraIdAsync(existingUow);
+        return myNeveraId is not null && entity.Nevera?.Id == myNeveraId;
+    }
 
     // ------------------------------------------------------------------
     // FiltrarNevera (ReadFilter) — Construcción del ViewModel para la vista HTML
@@ -48,8 +74,15 @@ public partial class IngredienteNeveraController
 
         await using (var unitOfWork = _formUnitOfWorkFactory.Create())
         {
-            var neveras = await unitOfWork.NeveraRepository.ReadAllAsync();
-            if (model.NeveraId <= 0)
+            var neveras = (await unitOfWork.NeveraRepository.ReadAllAsync()).ToList();
+            if (!IsAdministrador)
+            {
+                var myNeveraId = neveras.FirstOrDefault(n => CurrentUserId is int uid && n.Usuario?.Id == uid)?.Id ?? 0;
+                p_nevera_oid = myNeveraId;
+                model.NeveraId = myNeveraId;
+                neveras = neveras.Where(n => n.Id == myNeveraId).ToList();
+            }
+            else if (model.NeveraId <= 0)
             {
                 model.NeveraId = neveras.FirstOrDefault(n => CurrentUserId is int uid && n.Usuario?.Id == uid)?.Id
                     ?? neveras.FirstOrDefault()?.Id
@@ -86,6 +119,34 @@ public partial class IngredienteNeveraController
         return model;
     }
 
+    // ------------------------------------------------------------------
+    // CambiarCantidad (CU-05: Modificar cantidad + / - desde Mi Nevera)
+    // ------------------------------------------------------------------
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CambiarCantidad(int p_oid, int delta)
+    {
+        var entity = await _ingredienteNeveraService.ReadOIDAsync(p_oid);
+        if (entity is null) return NotFound();
+        if (!await CanAccessNeveraItemAsync(entity)) return Forbid();
+
+        var nuevaCantidad = Math.Max(0, entity.Cantidad + delta);
+        var nombre = entity.IngredienteCatalogo?.Nombre ?? $"#{entity.Id}";
+
+        try
+        {
+            await _ingredienteNeveraService.ModifyAsync(p_oid, nuevaCantidad, entity.FechaCaducidad);
+            TempData["Success"] = $"Cantidad de «{nombre}» actualizada a {nuevaCantidad}.";
+        }
+        catch (ModelException error)
+        {
+            TempData["Error"] = error.InnerException?.Message ?? error.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     /*PROTECTED REGION ID(IngredienteNeveraController_ComprobarCaducidad_POST_attributes) START*/
@@ -102,6 +163,10 @@ public partial class IngredienteNeveraController
 
         try
         {
+            var preEntity = await _ingredienteNeveraService.ReadOIDAsync(p_oid);
+            if (preEntity is null) return NotFound();
+            if (!await CanAccessNeveraItemAsync(preEntity)) return Forbid();
+
             await _ingredienteNeveraService.ComprobarCaducidadAsync(p_oid);
             var entity = await _ingredienteNeveraService.ReadOIDAsync(p_oid);
             if (entity is not null)

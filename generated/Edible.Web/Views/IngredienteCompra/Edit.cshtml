@@ -2,47 +2,56 @@
 @model Edible.Web.ViewModels.IngredienteCompraViewModel
 
 @{
-    ViewData["Title"] = "Editar";
+    var esAdmin = User.IsInRole("Administrador");
+    ViewData["Title"] = esAdmin ? "Editar IngredienteCompra" : "Editar producto de mi lista";
 }
 
 <div class="row justify-content-center">
     <div class="col-lg-8 col-xl-7">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-body p-4">
-                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Editar</span>
-                <h1 class="h3 mb-1">IngredienteCompra</h1>
-                <p class="text-body-secondary mb-0">Completa los campos y guarda los cambios.</p>
+                <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">@(esAdmin ? "Editar" : "Mi Lista de la Compra")</span>
+                <h1 class="h3 mb-1">@(esAdmin ? "Ingrediente de Compra" : "Editar producto de mi lista")</h1>
+                <p class="text-body-secondary mb-0">Actualiza la cantidad o el estado del producto en tu lista.</p>
             </div>
             <form asp-action="Edit" method="post">
                 @Html.AntiForgeryToken()
                 <div class="card-body p-4">
                     <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
                     <input type="hidden" asp-for="Id" />
-        <div class="mb-3">
-            <label asp-for="Cantidad" class="form-label"></label>
-            <input asp-for="Cantidad" class="form-control" />
-            <span asp-validation-for="Cantidad" class="text-danger"></span>
-        </div>
-        <div class="form-check mb-3">
-            <input asp-for="Comprado" class="form-check-input" />
-            <label asp-for="Comprado" class="form-check-label"></label>
-            <span asp-validation-for="Comprado" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="NeveraId" class="form-label"></label>
-            <select asp-for="NeveraId" asp-items="Model.NeveraOptions" class="form-select"><option value="">Selecciona...</option></select>
-            <span asp-validation-for="NeveraId" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="ListaCompraId" class="form-label"></label>
-            <select asp-for="ListaCompraId" asp-items="Model.ListaCompraOptions" class="form-select"><option value="">Selecciona...</option></select>
-            <span asp-validation-for="ListaCompraId" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="IngredienteCatalogoId" class="form-label"></label>
-            <select asp-for="IngredienteCatalogoId" asp-items="Model.IngredienteCatalogoOptions" class="form-select"><option value="">Selecciona...</option></select>
-            <span asp-validation-for="IngredienteCatalogoId" class="text-danger"></span>
-        </div>
+                    <div class="mb-3">
+                        <label asp-for="IngredienteCatalogoId" class="form-label">Producto</label>
+                        <select asp-for="IngredienteCatalogoId" asp-items="Model.IngredienteCatalogoOptions" class="form-select"><option value="">Selecciona...</option></select>
+                        <span asp-validation-for="IngredienteCatalogoId" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Cantidad" class="form-label">Cantidad</label>
+                        <input asp-for="Cantidad" type="number" min="1" class="form-control" />
+                        <span asp-validation-for="Cantidad" class="text-danger"></span>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input asp-for="Comprado" class="form-check-input" />
+                        <label asp-for="Comprado" class="form-check-label">Comprado</label>
+                        <span asp-validation-for="Comprado" class="text-danger"></span>
+                    </div>
+                    @if (esAdmin)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="NeveraId" class="form-label"></label>
+                            <select asp-for="NeveraId" asp-items="Model.NeveraOptions" class="form-select"><option value="">Selecciona...</option></select>
+                            <span asp-validation-for="NeveraId" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ListaCompraId" class="form-label"></label>
+                            <select asp-for="ListaCompraId" asp-items="Model.ListaCompraOptions" class="form-select"><option value="">Selecciona...</option></select>
+                            <span asp-validation-for="ListaCompraId" class="text-danger"></span>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="NeveraId" />
+                        <input type="hidden" asp-for="ListaCompraId" />
+                    }
                 </div>
                 <div class="card-footer bg-body p-4 d-flex flex-column flex-sm-row gap-2">
                     <button type="submit" class="btn btn-primary">Guardar cambios</button>
@@ -55,6 +64,4 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
-
 }

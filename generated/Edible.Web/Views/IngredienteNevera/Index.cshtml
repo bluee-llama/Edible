@@ -2,68 +2,119 @@
 @model IEnumerable<Edible.Web.ViewModels.IngredienteNeveraViewModel>
 
 @{
-    ViewData["Title"] = "IngredienteNevera";
+    var esAdmin = User.IsInRole("Administrador");
+    ViewData["Title"] = esAdmin ? "Ingredientes en Nevera (Administración)" : "Mi Nevera";
+    var hoy = DateTime.Today;
+    var limiteCerca = hoy.AddDays(3);
+    var lista = Model.ToList();
+    var caducadosActivos = lista.Count(i => i.Cantidad > 0 && i.FechaCaducidad.Date < hoy);
+    var cercaActivos = lista.Count(i => i.Cantidad > 0 && i.FechaCaducidad.Date >= hoy && i.FechaCaducidad.Date <= limiteCerca);
 }
 
-@if (TempData["Success"] is string ok)
+@if (caducadosActivos > 0)
 {
-    <div class="alert alert-success" role="status">@ok</div>
+    <div class="alert alert-danger d-flex align-items-center justify-content-between" role="alert">
+        <div>
+            <strong>Aviso de caducidad:</strong> Tienes <strong>@caducadosActivos</strong> @(caducadosActivos == 1 ? "producto caducado" : "productos caducados") con stock en la nevera. Usa «Comprobar caducidad» para descartar el stock vencido.
+        </div>
+        <a asp-action="FiltrarNevera" asp-route-p_nevera_oid="@(lista.FirstOrDefault()?.NeveraId ?? 0)" asp-route-p_estado="3" class="btn btn-sm btn-outline-danger ms-3 text-nowrap">Ver caducados</a>
+    </div>
 }
-@if (TempData["Warning"] is string warn)
+@if (cercaActivos > 0)
 {
-    <div class="alert alert-warning" role="status">@warn</div>
+    <div class="alert alert-warning d-flex align-items-center justify-content-between" role="status">
+        <div>
+            <strong>Próximos a caducar:</strong> Tienes <strong>@cercaActivos</strong> @(cercaActivos == 1 ? "producto que caduca" : "productos que caducan") en los próximos 3 días.
+        </div>
+        <a asp-action="FiltrarNevera" asp-route-p_nevera_oid="@(lista.FirstOrDefault()?.NeveraId ?? 0)" asp-route-p_estado="2" class="btn btn-sm btn-outline-dark ms-3 text-nowrap">Ver próximos</a>
+    </div>
 }
-@if (TempData["Error"] is string error)
-{
-    <div class="alert alert-danger" role="alert">@error</div>
-}
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-body d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 p-4">
         <div>
-            <h1 class="h3 mb-1">IngredienteNevera</h1>
-            <p class="text-body-secondary mb-0">Consulta y gestiona los registros disponibles.</p>
+            <h1 class="h3 mb-1">@(esAdmin ? "Ingredientes en Neveras (Administración)" : "Mi Nevera")</h1>
+            <p class="text-body-secondary mb-0">
+                @(esAdmin ? "Consulta y gestiona el stock de todas las neveras del sistema." : "Gestiona los alimentos disponibles en tu nevera virtual, sus cantidades y sus fechas de caducidad.")
+            </p>
         </div>
         <div class="d-flex flex-column flex-sm-row gap-2">
-            <a asp-action="FiltrarNevera" class="btn btn-outline-primary">Filtrar nevera</a>
-            <a asp-action="Create" class="btn btn-primary">Crear</a>
+            <a asp-action="FiltrarNevera" class="btn btn-outline-primary">Filtrar @(esAdmin ? "nevera" : "mi nevera")</a>
+            <a asp-action="Create" class="btn btn-primary">+ Añadir producto</a>
         </div>
     </div>
     <div class="card-body p-0">
-    @if (Model.Any())
+    @if (lista.Any())
     {
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th scope="col">@Html.DisplayNameFor(model => model.Id)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.Cantidad)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.FechaCaducidad)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.IngredienteCatalogoLabel)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.NeveraLabel)</th>
-                        <th scope="col">@Html.DisplayNameFor(model => model.RecetaLabel)</th>
+                        @if (esAdmin)
+                        {
+                            <th scope="col">ID</th>
+                        }
+                        <th scope="col">Alimento</th>
+                        <th scope="col">Cantidad</th>
+                        <th scope="col">Fecha de caducidad</th>
+                        <th scope="col">Estado</th>
+                        @if (esAdmin)
+                        {
+                            <th scope="col">Nevera</th>
+                            <th scope="col">Receta</th>
+                        }
                         <th scope="col" class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var item in Model)
+                @foreach (var item in lista)
                 {
+                    var fecha = item.FechaCaducidad.Date;
+                    var estadoInfo = fecha < hoy
+                        ? ("Caducado", "text-bg-danger")
+                        : (fecha <= limiteCerca
+                            ? ("Cerca de caducar", "text-bg-warning")
+                            : ("Perfecto", "text-bg-success"));
                     <tr>
-                            <td>@Html.DisplayFor(modelItem => item.Id)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Cantidad)</td>
-                            <td>@Html.DisplayFor(modelItem => item.FechaCaducidad)</td>
-                            <td>@Html.DisplayFor(modelItem => item.IngredienteCatalogoLabel)</td>
-                            <td>@Html.DisplayFor(modelItem => item.NeveraLabel)</td>
-                            <td>@Html.DisplayFor(modelItem => item.RecetaLabel)</td>
-                            <td class="text-end text-nowrap">
-                                <form asp-action="ComprobarCaducidad" method="post" class="d-inline">
+                        @if (esAdmin)
+                        {
+                            <td>@item.Id</td>
+                        }
+                        <td class="fw-semibold">@item.IngredienteCatalogoLabel</td>
+                        <td class="text-nowrap">
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <form asp-action="CambiarCantidad" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="p_oid" value="@item.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-warning">Comprobar caducidad</button>
+                                    <input type="hidden" name="delta" value="-1" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" title="Restar 1" disabled="@(item.Cantidad <= 0)">−</button>
                                 </form>
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
-                            </td>
+                                <span class="badge text-bg-light border fs-6 px-2">@item.Cantidad</span>
+                                <form asp-action="CambiarCantidad" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="p_oid" value="@item.Id" />
+                                    <input type="hidden" name="delta" value="1" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" title="Sumar 1">+</button>
+                                </form>
+                            </div>
+                        </td>
+                        <td>@item.FechaCaducidad.ToString("yyyy-MM-dd")</td>
+                        <td><span class="badge @estadoInfo.Item2">@estadoInfo.Item1</span></td>
+                        @if (esAdmin)
+                        {
+                            <td>#@item.NeveraLabel</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.RecetaLabel) ? "-" : item.RecetaLabel)</td>
+                        }
+                        <td class="text-end text-nowrap">
+                            <form asp-action="ComprobarCaducidad" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="p_oid" value="@item.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-warning">Comprobar caducidad</button>
+                            </form>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Detalles</a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                        </td>
                     </tr>
                 }
                 </tbody>
@@ -73,9 +124,12 @@
     else
     {
         <div class="text-center p-5">
-            <h2 class="h5">Todavía no hay registros</h2>
-            <p class="text-body-secondary">Crea el primer registro para comenzar.</p>
-            <a asp-action="Create" class="btn btn-primary">Crear</a>
+            <h2 class="h5">Tu nevera está vacía</h2>
+            <p class="text-body-secondary">Añade tu primer alimento o vuelca los productos comprados desde tu lista de la compra.</p>
+            <div class="d-flex justify-content-center gap-2">
+                <a asp-action="Create" class="btn btn-primary">+ Añadir producto</a>
+                <a asp-controller="Nevera" asp-action="RecorrerListaCompra" class="btn btn-outline-primary">Volcar lista de compra</a>
+            </div>
         </div>
     }
     </div>

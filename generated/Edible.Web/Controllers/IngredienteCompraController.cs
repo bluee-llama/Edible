@@ -34,9 +34,18 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Index()
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Index_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_Index_GET_body) ENABLED START*/
 
         var entities = await _ingredienteCompraService.ReadAllAsync();
+        if (!IsAdministrador)
+        {
+            var (_, myListaId) = await GetCurrentUserNeveraAndListaAsync();
+            entities = entities
+                .Where(e => e.ListaCompra?.Id == myListaId)
+                .OrderBy(e => e.Comprado)
+                .ThenBy(e => e.IngredienteCatalogo?.Nombre)
+                .ToList();
+        }
         return View(entities.Select(IngredienteCompraAssembler.ToViewModel).ToList());
     /*PROTECTED REGION END*/
     }
@@ -46,10 +55,11 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Details(int id)
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Details_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_Details_GET_body) ENABLED START*/
 
         var entity = await _ingredienteCompraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessCompraItemAsync(entity)) return Forbid();
         return View(IngredienteCompraAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -77,15 +87,17 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.IngredienteCompraViewModel model, DateTime p_fechaCaducidad)
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Create_POST_body) START*/
-
+    /*PROTECTED REGION ID(IngredienteCompraController_Create_POST_body) ENABLED START*/
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.IngredienteCompraService(unitOfWork);
 
-
-
-
+        if (!IsAdministrador)
+        {
+            var (myNeveraId, myListaId) = await GetCurrentUserNeveraAndListaAsync(unitOfWork);
+            model.NeveraId = myNeveraId;
+            model.ListaCompraId = myListaId;
+        }
 
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.NeveraId is int selectedNevera &&
@@ -101,23 +113,17 @@ public partial class IngredienteCompraController : Controller
             ModelState.AddModelError("IngredienteCatalogoId", "Selecciona un registro existente de Ingrediente.");
         if (model.IngredienteCatalogoId is null) ModelState.AddModelError("IngredienteCatalogoId", "Debes seleccionar una opción.");
 
-
-
-
         if (!ModelState.IsValid) return View(model);
-
 
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.IngredienteCompra.Create");
-
 
             var entity = await service.NewAsync(model.Cantidad, p_fechaCaducidad, model.Comprado, model.NeveraId.GetValueOrDefault(), model.ListaCompraId.GetValueOrDefault(), model.IngredienteCatalogoId.GetValueOrDefault());
 
             await service.ApplyIngredienteCompraRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId, p_ingredienteCatalogo_id: model.IngredienteCatalogoId);
 
             await service.ModifierIngredienteCompraDefaultAsync(entity);
-
 
             await unitOfWork.CommitAsync();
         }
@@ -130,7 +136,7 @@ public partial class IngredienteCompraController : Controller
             return View(model);
         }
 
-
+        TempData["Success"] = "Producto añadido a la lista de la compra.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -140,10 +146,11 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id)
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Edit_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_Edit_GET_body) ENABLED START*/
 
         var entity = await _ingredienteCompraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessCompraItemAsync(entity)) return Forbid();
         var model = IngredienteCompraAssembler.ToViewModel(entity);
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -156,16 +163,21 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id, Edible.Web.ViewModels.IngredienteCompraViewModel model, DateTime p_fechaCaducidad)
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Edit_POST_body) START*/
-
+    /*PROTECTED REGION ID(IngredienteCompraController_Edit_POST_body) ENABLED START*/
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.IngredienteCompraService(unitOfWork);
 
         var entity = await service.ReadOIDIngredienteCompraDefaultAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessCompraItemAsync(entity, unitOfWork)) return Forbid();
 
-
+        if (!IsAdministrador)
+        {
+            var (myNeveraId, myListaId) = await GetCurrentUserNeveraAndListaAsync(unitOfWork);
+            model.NeveraId = entity.Nevera?.Id ?? myNeveraId;
+            model.ListaCompraId = entity.ListaCompra?.Id ?? myListaId;
+        }
 
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.NeveraId is int selectedNevera &&
@@ -181,23 +193,17 @@ public partial class IngredienteCompraController : Controller
             ModelState.AddModelError("IngredienteCatalogoId", "Selecciona un registro existente de Ingrediente.");
         if (model.IngredienteCatalogoId is null) ModelState.AddModelError("IngredienteCatalogoId", "Debes seleccionar una opción.");
 
-
-
-
         if (!ModelState.IsValid) return View(model);
-
 
         try
         {
             await unitOfWork.BeginTransactionAsync("MVC.IngredienteCompra.Edit");
-
 
             await service.ModifyAsync(id, model.Cantidad, p_fechaCaducidad, model.Comprado, model.NeveraId.GetValueOrDefault(), model.ListaCompraId.GetValueOrDefault(), model.IngredienteCatalogoId.GetValueOrDefault());
             entity = await service.ReadOIDIngredienteCompraDefaultAsync(id) ?? throw new InvalidOperationException("Entity disappeared during update.");
             await service.ApplyIngredienteCompraRelationsAsync(entity, p_nevera_id: model.NeveraId, p_listaCompra_id: model.ListaCompraId, p_ingredienteCatalogo_id: model.IngredienteCatalogoId);
 
             await service.ModifierIngredienteCompraDefaultAsync(entity);
-
 
             await unitOfWork.CommitAsync();
         }
@@ -210,7 +216,7 @@ public partial class IngredienteCompraController : Controller
             return View(model);
         }
 
-
+        TempData["Success"] = "Producto de la lista actualizado.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
@@ -220,10 +226,11 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Delete(int id)
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_Delete_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_Delete_GET_body) ENABLED START*/
 
         var entity = await _ingredienteCompraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessCompraItemAsync(entity)) return Forbid();
         return View(IngredienteCompraAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -235,10 +242,14 @@ public partial class IngredienteCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-    /*PROTECTED REGION ID(IngredienteCompraController_DeleteConfirmed_POST_body) START*/
+    /*PROTECTED REGION ID(IngredienteCompraController_DeleteConfirmed_POST_body) ENABLED START*/
 
         if (!ModelState.IsValid) return View("Delete", new Edible.Web.ViewModels.IngredienteCompraViewModel());
+        var entity = await _ingredienteCompraService.ReadOIDAsync(id);
+        if (entity is null) return NotFound();
+        if (!await CanAccessCompraItemAsync(entity)) return Forbid();
         await _ingredienteCompraService.DestroyAsync(id);
+        TempData["Success"] = "Producto eliminado de la lista de la compra.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }

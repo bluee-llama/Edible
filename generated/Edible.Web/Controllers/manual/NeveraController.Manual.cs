@@ -38,7 +38,7 @@ public partial class NeveraController
     {
         var model = new RecorrerListaCompraViewModel
         {
-            UsuarioId = usuarioId ?? CurrentUserId
+            UsuarioId = IsAdministrador ? (usuarioId ?? CurrentUserId) : CurrentUserId
         };
         await LoadRecorrerListaOptionsAsync(model);
         return View(model);
@@ -52,6 +52,13 @@ public partial class NeveraController
     {
     /*PROTECTED REGION ID(NeveraController_RecorrerListaCompra_POST_body) ENABLED START*/
 
+        if (!IsAdministrador)
+        {
+            if (CurrentUserId is not int currentId) return Challenge();
+            if (p_usuario_oid > 0 && p_usuario_oid != currentId) return Forbid();
+            p_usuario_oid = currentId;
+        }
+
         if (!ModelState.IsValid || p_usuario_oid <= 0)
         {
             TempData["Error"] = "Debes seleccionar un usuario válido para volcar su lista de la compra.";
@@ -63,14 +70,16 @@ public partial class NeveraController
             await using var unitOfWork = _useCaseUnitOfWorkFactory.Create();
             var useCase = new Edible.Application.UseCases.Nevera.NeveraUseCase(unitOfWork);
             var nevera = await useCase.RecorrerListaCompraAsync(p_usuario_oid);
-            TempData["Success"] = $"Se han volcado los ingredientes comprados a la nevera #{nevera.Id} y se han eliminado de la lista de la compra.";
+            TempData["Success"] = IsAdministrador
+                ? $"Se han volcado los ingredientes comprados a la nevera #{nevera.Id} y se han eliminado de la lista de la compra."
+                : "Se han volcado los productos comprados a tu nevera y se han quitado de tu lista de la compra.";
         }
         catch (ModelException error)
         {
             TempData["Error"] = error.InnerException?.Message ?? error.Message;
         }
 
-        return RedirectToAction(nameof(RecorrerListaCompra), new { usuarioId = p_usuario_oid });
+        return RedirectToAction(nameof(RecorrerListaCompra), IsAdministrador ? new { usuarioId = p_usuario_oid } : null);
     /*PROTECTED REGION END*/
     }
 
@@ -81,7 +90,12 @@ public partial class NeveraController
             .OrderBy(u => u.Name)
             .ToList();
 
-        if (model.UsuarioId is null || !usuarios.Any(u => u.Id == model.UsuarioId))
+        if (!IsAdministrador && CurrentUserId is int uid)
+        {
+            usuarios = usuarios.Where(u => u.Id == uid).ToList();
+            model.UsuarioId = uid;
+        }
+        else if (model.UsuarioId is null || !usuarios.Any(u => u.Id == model.UsuarioId))
         {
             model.UsuarioId = usuarios.FirstOrDefault()?.Id;
         }

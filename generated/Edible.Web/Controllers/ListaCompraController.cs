@@ -34,8 +34,12 @@ public partial class ListaCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Index()
     {
-    /*PROTECTED REGION ID(ListaCompraController_Index_GET_body) START*/
+    /*PROTECTED REGION ID(ListaCompraController_Index_GET_body) ENABLED START*/
 
+        if (!User.IsInRole("Administrador"))
+        {
+            return RedirectToAction("Index", "IngredienteCompra");
+        }
         var entities = await _listaCompraService.ReadAllAsync();
         return View(entities.Select(ListaCompraAssembler.ToViewModel).ToList());
     /*PROTECTED REGION END*/
@@ -46,16 +50,19 @@ public partial class ListaCompraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Details(int id)
     {
-    /*PROTECTED REGION ID(ListaCompraController_Details_GET_body) START*/
+    /*PROTECTED REGION ID(ListaCompraController_Details_GET_body) ENABLED START*/
 
         var entity = await _listaCompraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        var currentUserId = int.TryParse(User?.Identity?.Name, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var uid) ? uid : (int?)null;
+        if (User?.IsInRole("Administrador") != true && entity.Usuario?.Id != currentUserId) return Forbid();
         return View(ListaCompraAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
 
     [HttpGet]
-    /*PROTECTED REGION ID(ListaCompraController_Create_GET_attributes) START*/
+    /*PROTECTED REGION ID(ListaCompraController_Create_GET_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create()
     {
@@ -70,7 +77,8 @@ public partial class ListaCompraController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    /*PROTECTED REGION ID(ListaCompraController_Create_POST_attributes) START*/
+    /*PROTECTED REGION ID(ListaCompraController_Create_POST_attributes) ENABLED START*/
+    [Authorize(Roles = "Administrador")]
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Create(Edible.Web.ViewModels.ListaCompraViewModel model)
     {

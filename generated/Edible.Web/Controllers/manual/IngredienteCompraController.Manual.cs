@@ -20,6 +20,45 @@ namespace Edible.Web.Controllers;
 /*PROTECTED REGION END*/
 public partial class IngredienteCompraController
 {
+    private const string RolAdministrador = "Administrador";
+
+    private bool IsAdministrador => User.IsInRole(RolAdministrador);
+
+    private int? CurrentUserId =>
+        int.TryParse(User?.Identity?.Name, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out var id) ? id : null;
+
+    private async Task<(int? NeveraId, int? ListaCompraId)> GetCurrentUserNeveraAndListaAsync(
+        Edible.Application.Abstractions.IUnitOfWork? existingUow = null)
+    {
+        if (CurrentUserId is not int uid) return (null, null);
+        if (existingUow is not null)
+        {
+            var neveras = await existingUow.NeveraRepository.ReadAllAsync();
+            var listas = await existingUow.ListaCompraRepository.ReadAllAsync();
+            return (
+                neveras.FirstOrDefault(n => n.Usuario?.Id == uid)?.Id,
+                listas.FirstOrDefault(l => l.Usuario?.Id == uid)?.Id);
+        }
+
+        await using var uow = _formUnitOfWorkFactory.Create();
+        var todasNeveras = await uow.NeveraRepository.ReadAllAsync();
+        var todasListas = await uow.ListaCompraRepository.ReadAllAsync();
+        return (
+            todasNeveras.FirstOrDefault(n => n.Usuario?.Id == uid)?.Id,
+            todasListas.FirstOrDefault(l => l.Usuario?.Id == uid)?.Id);
+    }
+
+    private async Task<bool> CanAccessCompraItemAsync(
+        IngredienteCompra entity,
+        Edible.Application.Abstractions.IUnitOfWork? existingUow = null)
+    {
+        if (IsAdministrador) return true;
+        if (entity.ListaCompra?.Usuario?.Id is int ownerId) return ownerId == CurrentUserId;
+        var (_, myListaId) = await GetCurrentUserNeveraAndListaAsync(existingUow);
+        return myListaId is not null && entity.ListaCompra?.Id == myListaId;
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     /*PROTECTED REGION ID(IngredienteCompraController_MarcarComprado_POST_attributes) START*/
@@ -36,8 +75,12 @@ public partial class IngredienteCompraController
 
         try
         {
+            var entity = await _ingredienteCompraService.ReadOIDAsync(p_oid);
+            if (entity is null) return NotFound();
+            if (!await CanAccessCompraItemAsync(entity)) return Forbid();
+
             await _ingredienteCompraService.MarcarCompradoAsync(p_oid);
-            TempData["Success"] = "Ingrediente marcado como comprado.";
+            TempData["Success"] = "Producto marcado como comprado.";
         }
         catch (ModelException error)
         {
@@ -64,8 +107,12 @@ public partial class IngredienteCompraController
 
         try
         {
+            var entity = await _ingredienteCompraService.ReadOIDAsync(p_oid);
+            if (entity is null) return NotFound();
+            if (!await CanAccessCompraItemAsync(entity)) return Forbid();
+
             await _ingredienteCompraService.DesmarcarCompradoAsync(p_oid);
-            TempData["Success"] = "Ingrediente desmarcado como pendiente de compra.";
+            TempData["Success"] = "Producto desmarcado como pendiente de compra.";
         }
         catch (ModelException error)
         {

@@ -2,54 +2,51 @@
 @model Edible.Web.ViewModels.RecorrerListaCompraViewModel
 
 @{
-    ViewData["Title"] = "Volcar lista de compra a la nevera";
+    var esAdmin = User.IsInRole("Administrador");
+    ViewData["Title"] = esAdmin ? "Volcar lista de compra a la nevera" : "Volcar mis comprados a mi nevera";
 }
 
 <div class="row justify-content-center">
     <div class="col-xl-10">
-        @if (TempData["Success"] is string ok)
-        {
-            <div class="alert alert-success" role="status">@ok</div>
-        }
-        @if (TempData["Error"] is string error)
-        {
-            <div class="alert alert-danger" role="alert">@error</div>
-        }
-
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-body p-4">
                 <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Operación transaccional</span>
-                <h1 class="h3 mb-1">Volcar lista de la compra a la nevera</h1>
+                <h1 class="h3 mb-1">@(esAdmin ? "Volcar lista de la compra a la nevera" : "Volcar productos comprados a mi nevera")</h1>
                 <p class="text-body-secondary mb-0">
-                    Recorre la lista de la compra del usuario seleccionado, suma o añade a su nevera todos los ingredientes marcados como comprados y los elimina de la lista en una única transacción.
+                    @(esAdmin
+                        ? "Recorre la lista de la compra del usuario seleccionado, suma o añade a su nevera todos los ingredientes marcados como comprados y los elimina de la lista en una única transacción."
+                        : "Pasa automáticamente todos los productos que hayas marcado como «Comprado» en tu lista de la compra al stock de tu nevera.")
                 </p>
             </div>
             <div class="card-body p-4">
-                <form method="get" asp-action="RecorrerListaCompra" class="row g-3 align-items-end mb-4">
-                    <div class="col-md-8">
-                        <label for="usuarioId" class="form-label">Usuario</label>
-                        <select id="usuarioId" name="usuarioId" class="form-select" onchange="this.form.submit()">
-                            @foreach (var opt in Model.UsuarioOptions)
-                            {
-                                <option value="@opt.Value" selected="@(opt.Value == Model.UsuarioId?.ToString(CultureInfo.InvariantCulture))">@opt.Text</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-outline-secondary w-100">Ver estado del usuario</button>
-                    </div>
-                </form>
+                @if (esAdmin)
+                {
+                    <form method="get" asp-action="RecorrerListaCompra" class="row g-3 align-items-end mb-4">
+                        <div class="col-md-8">
+                            <label for="usuarioId" class="form-label">Usuario</label>
+                            <select id="usuarioId" name="usuarioId" class="form-select" onchange="this.form.submit()">
+                                @foreach (var opt in Model.UsuarioOptions)
+                                {
+                                    <option value="@opt.Value" selected="@(opt.Value == Model.UsuarioId?.ToString(CultureInfo.InvariantCulture))">@opt.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-outline-secondary w-100">Ver estado del usuario</button>
+                        </div>
+                    </form>
+                }
 
                 @if (Model.UsuarioId is int uid)
                 {
                     <form asp-action="RecorrerListaCompra" method="post" class="d-flex flex-column flex-sm-row gap-2">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="p_usuario_oid" value="@uid" />
-                        <button type="submit" class="btn btn-primary">
-                            Volcar comprados a la nevera (@Model.TotalComprados listos)
+                        <button type="submit" class="btn btn-success" disabled="@(Model.TotalComprados == 0)">
+                            Volcar comprados a @(esAdmin ? "la nevera" : "mi nevera") (@Model.TotalComprados listos)
                         </button>
-                        <a asp-controller="IngredienteCompra" asp-action="Index" class="btn btn-outline-secondary">Gestionar lista de compra</a>
-                        <a asp-action="Index" class="btn btn-outline-secondary">Volver a neveras</a>
+                        <a asp-controller="IngredienteCompra" asp-action="Index" class="btn btn-outline-primary">Ir a @(esAdmin ? "ingredientes de compra" : "mi lista de la compra")</a>
+                        <a asp-controller="IngredienteNevera" asp-action="Index" class="btn btn-outline-secondary">Ir a @(esAdmin ? "ingredientes en nevera" : "mi nevera")</a>
                     </form>
                 }
             </div>
@@ -59,8 +56,8 @@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-body p-4">
-                        <h2 class="h5 mb-1">1. Lista de la compra @(Model.UsuarioNombre is not null ? $"de {Model.UsuarioNombre}" : "")</h2>
-                        <p class="text-body-secondary mb-0">Solo los ítems con estado «Comprado» pasarán a la nevera.</p>
+                        <h2 class="h5 mb-1">1. @(esAdmin && Model.UsuarioNombre is not null ? $"Lista de la compra de {Model.UsuarioNombre}" : "Mi Lista de la Compra")</h2>
+                        <p class="text-body-secondary mb-0">Solo los productos marcados como «Comprado» pasarán a la nevera.</p>
                     </div>
                     <div class="card-body p-0">
                         @if (Model.ItemsListaCompra.Count > 0)
@@ -69,7 +66,7 @@
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th scope="col">Ingrediente</th>
+                                            <th scope="col">Producto</th>
                                             <th scope="col">Cantidad</th>
                                             <th scope="col" class="text-end">Estado</th>
                                         </tr>
@@ -78,7 +75,7 @@
                                     @foreach (var item in Model.ItemsListaCompra)
                                     {
                                         <tr class="@(item.Comprado ? "table-success" : null)">
-                                            <td>@item.IngredienteNombre</td>
+                                            <td class="fw-semibold">@item.IngredienteNombre</td>
                                             <td>@item.Cantidad</td>
                                             <td class="text-end">
                                                 @if (item.Comprado)
@@ -107,8 +104,8 @@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-body p-4">
-                        <h2 class="h5 mb-1">2. Stock actual en Nevera @(Model.UsuarioNombre is not null ? $"de {Model.UsuarioNombre}" : "")</h2>
-                        <p class="text-body-secondary mb-0">Si el ingrediente ya existe en nevera, se sumará su cantidad.</p>
+                        <h2 class="h5 mb-1">2. @(esAdmin && Model.UsuarioNombre is not null ? $"Stock en Nevera de {Model.UsuarioNombre}" : "Stock actual en Mi Nevera")</h2>
+                        <p class="text-body-secondary mb-0">Si el alimento ya existe en tu nevera, se sumará su cantidad automáticamente.</p>
                     </div>
                     <div class="card-body p-0">
                         @if (Model.ItemsNevera.Count > 0)
@@ -117,7 +114,7 @@
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th scope="col">Ingrediente</th>
+                                            <th scope="col">Alimento</th>
                                             <th scope="col">Cantidad</th>
                                             <th scope="col" class="text-end">Caducidad</th>
                                         </tr>
@@ -126,7 +123,7 @@
                                     @foreach (var item in Model.ItemsNevera)
                                     {
                                         <tr>
-                                            <td>@item.IngredienteNombre</td>
+                                            <td class="fw-semibold">@item.IngredienteNombre</td>
                                             <td>@item.Cantidad</td>
                                             <td class="text-end">@item.FechaCaducidad.ToString("yyyy-MM-dd")</td>
                                         </tr>
@@ -137,7 +134,7 @@
                         }
                         else
                         {
-                            <p class="text-body-secondary p-4 mb-0">La nevera no tiene ingredientes todavía.</p>
+                            <p class="text-body-secondary p-4 mb-0">La nevera no tiene alimentos todavía.</p>
                         }
                     </div>
                 </div>

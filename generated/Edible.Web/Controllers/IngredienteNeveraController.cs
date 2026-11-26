@@ -34,9 +34,17 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Index()
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Index_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_Index_GET_body) ENABLED START*/
 
         var entities = await _ingredienteNeveraService.ReadAllAsync();
+        if (!IsAdministrador)
+        {
+            var myNeveraId = await GetCurrentUserNeveraIdAsync();
+            entities = entities
+                .Where(e => e.Nevera?.Id == myNeveraId)
+                .OrderBy(e => e.FechaCaducidad)
+                .ToList();
+        }
         return View(entities.Select(IngredienteNeveraAssembler.ToViewModel).ToList());
     /*PROTECTED REGION END*/
     }
@@ -46,10 +54,11 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Details(int id)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Details_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_Details_GET_body) ENABLED START*/
 
         var entity = await _ingredienteNeveraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessNeveraItemAsync(entity)) return Forbid();
         return View(IngredienteNeveraAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -82,6 +91,12 @@ public partial class IngredienteNeveraController : Controller
 
         await using var unitOfWork = _formUnitOfWorkFactory.Create();
         var service = new global::Edible.Application.Services.IngredienteNeveraService(unitOfWork);
+
+        if (!IsAdministrador)
+        {
+            model.NeveraId = await GetCurrentUserNeveraIdAsync(unitOfWork);
+            model.RecetaId = null;
+        }
 
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.IngredienteCatalogoId is int selectedIngredienteCatalogo &&
@@ -144,10 +159,11 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Edit(int id)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Edit_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_Edit_GET_body) ENABLED START*/
 
         var entity = await _ingredienteNeveraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessNeveraItemAsync(entity)) return Forbid();
         var model = IngredienteNeveraAssembler.ToViewModel(entity);
         await LoadFormOptionsAsync(model);
         return View(model);
@@ -167,6 +183,13 @@ public partial class IngredienteNeveraController : Controller
 
         var entity = await service.ReadOIDIngredienteNeveraDefaultAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessNeveraItemAsync(entity, unitOfWork)) return Forbid();
+
+        if (!IsAdministrador)
+        {
+            model.NeveraId = entity.Nevera?.Id ?? await GetCurrentUserNeveraIdAsync(unitOfWork);
+            model.RecetaId = entity.Receta?.Id;
+        }
 
         await LoadFormOptionsAsync(model, unitOfWork);
         if (model.IngredienteCatalogoId is int selectedIngredienteCatalogo &&
@@ -221,10 +244,11 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> Delete(int id)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_Delete_GET_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_Delete_GET_body) ENABLED START*/
 
         var entity = await _ingredienteNeveraService.ReadOIDAsync(id);
         if (entity is null) return NotFound();
+        if (!await CanAccessNeveraItemAsync(entity)) return Forbid();
         return View(IngredienteNeveraAssembler.ToViewModel(entity));
     /*PROTECTED REGION END*/
     }
@@ -236,10 +260,14 @@ public partial class IngredienteNeveraController : Controller
     /*PROTECTED REGION END*/
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-    /*PROTECTED REGION ID(IngredienteNeveraController_DeleteConfirmed_POST_body) START*/
+    /*PROTECTED REGION ID(IngredienteNeveraController_DeleteConfirmed_POST_body) ENABLED START*/
 
         if (!ModelState.IsValid) return View("Delete", new Edible.Web.ViewModels.IngredienteNeveraViewModel());
+        var entity = await _ingredienteNeveraService.ReadOIDAsync(id);
+        if (entity is null) return NotFound();
+        if (!await CanAccessNeveraItemAsync(entity)) return Forbid();
         await _ingredienteNeveraService.DestroyAsync(id);
+        TempData["Success"] = "Ingrediente eliminado de la nevera.";
         return RedirectToAction(nameof(Index));
     /*PROTECTED REGION END*/
     }
