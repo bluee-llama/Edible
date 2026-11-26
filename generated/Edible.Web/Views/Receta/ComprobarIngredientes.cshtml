@@ -1,0 +1,70 @@
+@* HARIA-WEB MANUAL: formulario de Receta.comprobarIngredientesDisponibles (CustomTransaction). Envía por POST y vuelve aquí (PRG). *@
+@using Edible.Web.Controllers
+@model List<RecetaCheckOption>
+
+@{
+    ViewData["Title"] = "Comprobar ingredientes de una receta";
+}
+
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-body p-4">
+                <h1 class="h3 mb-1">Comprobar ingredientes disponibles</h1>
+                <p class="text-body-secondary mb-0">Comprueba si la nevera del chef tiene stock suficiente para preparar la receta elegida.</p>
+            </div>
+            <div class="card-body p-4">
+                <partial name="_Mensajes" />
+                @if (Model.Any())
+                {
+                    <form id="comprobarForm" method="post" asp-action="ComprobarIngredientesDisponibles">
+                        <input type="hidden" name="p_nombre" id="p_nombre" />
+                        <input type="hidden" name="p_descripcion" id="p_descripcion" />
+                        <input type="hidden" name="p_dietaEspecial" id="p_dietaEspecial" />
+                        <input type="hidden" name="p_valoracionMedia" value="0" />
+                        <input type="hidden" name="p_chef_oid" id="p_chef_oid" />
+
+                        <label for="receta" class="form-label">Receta</label>
+                        <select id="receta" class="form-select mb-3" required>
+                            @for (var i = 0; i < Model.Count; i++)
+                            {
+                                var item = Model[i];
+                                <option value="@i"
+                                        data-nombre="@item.Nombre"
+                                        data-descripcion="@item.Descripcion"
+                                        data-dieta="@((int)item.DietaEspecial)"
+                                        data-chef="@item.ChefId">@item.Nombre (chef: @item.ChefNombre)</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-primary">Comprobar</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
+                    </form>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0" role="alert">
+                        No hay recetas que puedas comprobar: esta comprobación usa la nevera del chef autor de la receta.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const select = document.getElementById('receta');
+            if (!select) return;
+            function rellenar() {
+                const option = select.options[select.selectedIndex];
+                document.getElementById('p_nombre').value = option.dataset.nombre;
+                document.getElementById('p_descripcion').value = option.dataset.descripcion;
+                document.getElementById('p_dietaEspecial').value = option.dataset.dieta;
+                document.getElementById('p_chef_oid').value = option.dataset.chef;
+            }
+            select.addEventListener('change', rellenar);
+            rellenar();
+        })();
+    </script>
+}

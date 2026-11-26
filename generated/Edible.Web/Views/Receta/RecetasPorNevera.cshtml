@@ -1,0 +1,48 @@
+@* HARIA-WEB MANUAL: vista HTML de Receta.recetasPorNevera (ReadFilter) *@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model List<Edible.Web.ViewModels.RecetaViewModel>
+
+@{
+    ViewData["Title"] = "Recetas con los ingredientes de mi nevera";
+    var neveras = ViewData["NeveraOptions"] as List<SelectListItem> ?? new List<SelectListItem>();
+    var seleccionada = ViewData["p_nevera_oid"] is int id && id > 0 ? id.ToString() : string.Empty;
+    var buscado = ViewData["Buscado"] is true;
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-body p-4">
+        <h1 class="h3 mb-1">Recetas que puedo cocinar</h1>
+        <p class="text-body-secondary mb-3">Muestra las recetas cuyos ingredientes están todos en la nevera en cantidad suficiente.</p>
+        @if (neveras.Any())
+        {
+            <form method="get" asp-action="RecetasPorNevera" class="row g-2 align-items-end">
+                <div class="col-sm-8 col-md-6">
+                    <label for="p_nevera_oid" class="form-label">Nevera</label>
+                    <select id="p_nevera_oid" name="p_nevera_oid" class="form-select">
+                        @foreach (var option in neveras)
+                        {
+                            <option value="@option.Value" selected="@(option.Value == seleccionada)">@option.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Buscar recetas</button>
+                </div>
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-warning mb-0" role="alert">No hay ninguna nevera disponible para tu usuario.</div>
+        }
+    </div>
+    <div class="card-body p-0">
+        @if (buscado)
+        {
+            <partial name="_ResultadosReceta" model="Model" />
+        }
+        else if (neveras.Any())
+        {
+            <p class="text-body-secondary p-4 mb-0">Elige una nevera y pulsa «Buscar recetas».</p>
+        }
+    </div>
+</div>

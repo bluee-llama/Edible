@@ -1,0 +1,9 @@
+@* HARIA-WEB MANUAL: mensajes PRG (TempData) de las vistas manuales de Receta *@
+@if (TempData["Exito"] is string exito)
+{
+    <div class="alert alert-success" role="alert">@exito</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}

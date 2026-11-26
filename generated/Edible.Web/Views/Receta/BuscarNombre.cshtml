@@ -1,0 +1,35 @@
+@* HARIA-WEB MANUAL: vista HTML de Receta.buscarNombre (ReadFilter) *@
+@model List<Edible.Web.ViewModels.RecetaViewModel>
+
+@{
+    ViewData["Title"] = "Buscar recetas por nombre";
+    var nombre = ViewData["p_nombre"] as string ?? string.Empty;
+    var buscado = ViewData["Buscado"] is true;
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-body p-4">
+        <h1 class="h3 mb-1">Buscar recetas por nombre</h1>
+        <p class="text-body-secondary mb-3">Escribe parte del nombre de la receta. Si lo dejas vacío se muestran todas.</p>
+        <form method="get" asp-action="BuscarNombre" class="row g-2 align-items-end">
+            <div class="col-sm-8 col-md-6">
+                <label for="p_nombre" class="form-label">Nombre</label>
+                <input id="p_nombre" name="p_nombre" value="@nombre" class="form-control" placeholder="Ej.: tortilla" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Buscar</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Ver todas</a>
+            </div>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        @if (buscado)
+        {
+            <partial name="_ResultadosReceta" model="Model" />
+        }
+        else
+        {
+            <p class="text-body-secondary p-4 mb-0">Introduce un nombre y pulsa «Buscar».</p>
+        }
+    </div>
+</div>

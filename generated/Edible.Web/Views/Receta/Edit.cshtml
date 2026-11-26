@@ -1,4 +1,4 @@
-@* HARIA-WEB GENERATED sha256:e587f3e983349d2cb68dbfb9cc0f11fbc3c89d33d99d22b8aca3d1865bb1e988 *@
+@* HARIA-WEB MANUAL: vista editada a mano (el desplegable de Chef solo lo ve el administrador) *@
 @model Edible.Web.ViewModels.RecetaViewModel
 
 @{
@@ -48,11 +48,19 @@
             <input asp-for="Dificultad" class="form-control" />
             <span asp-validation-for="Dificultad" class="text-danger"></span>
         </div>
-        <div class="mb-3">
-            <label asp-for="ChefId" class="form-label"></label>
-            <select asp-for="ChefId" asp-items="Model.ChefOptions" class="form-select"><option value="">Selecciona...</option></select>
-            <span asp-validation-for="ChefId" class="text-danger"></span>
-        </div>
+        @if (Edible.Web.Controllers.RecetaWebSupport.IsAdmin(User))
+        {
+            <div class="mb-3">
+                <label asp-for="ChefId" class="form-label"></label>
+                <select asp-for="ChefId" asp-items="Model.ChefOptions" class="form-select"><option value="">Selecciona...</option></select>
+                <span asp-validation-for="ChefId" class="text-danger"></span>
+            </div>
+        }
+        else
+        {
+            <input type="hidden" asp-for="ChefId" />
+            <p class="text-body-secondary">La receta se publicará a tu nombre.</p>
+        }
         <partial name="_Pasos" model="Model" />
         <partial name="_Lineas" model="Model" />
                 </div>

@@ -1,9 +1,18 @@
-@* HARIA-WEB GENERATED sha256:437b951e9edae8765e3b89aeed69fb81a790a30e3d9c72aaae642e7a81f7cbc9 *@
+@* HARIA-WEB MANUAL: ficha de receta (nutrición, alérgenos, disponibilidad en mi nevera, Compartir y permisos de autoría) *@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Edible.Web.Controllers
 @model Edible.Web.ViewModels.RecetaViewModel
 
 @{
     ViewData["Title"] = "Detalles";
+    var usuarioOptions = ViewData["UsuarioOptions"] as List<SelectListItem> ?? new List<SelectListItem>();
+    var nutricion = ViewData["Nutricion"] as RecetaNutricion;
+    var puedoCocinarla = ViewData["PuedoCocinarla"] as bool?;
+    var puedeGestionar = RecetaWebSupport.CanManageReceta(User, Model.ChefId);
+    var esAutor = RecetaWebSupport.CurrentUserId(User) is int actual && Model.ChefId == actual;
 }
+
+<partial name="_Mensajes" />
 
 <div class="row justify-content-center">
     <div class="col-xl-9">
@@ -32,15 +41,101 @@
             <dt class="col-sm-4 col-lg-3 text-body-secondary">@Html.DisplayNameFor(model => model.ChefLabel)</dt>
             <dd class="col-sm-8 col-lg-9">@Html.DisplayFor(model => model.ChefLabel)</dd>
                 </dl>
+                @if (nutricion is not null)
+                {
+                    <hr />
+                    <div class="row g-3 mb-2">
+                        <div class="col-lg-7">
+                            <h2 class="h5">Información nutricional</h2>
+                            <div class="row text-center g-2">
+                                <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="fs-5 fw-semibold">@nutricion.Calorias</div><small class="text-body-secondary">kcal</small></div></div>
+                                <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="fs-5 fw-semibold">@nutricion.Proteinas.ToString("0.#")</div><small class="text-body-secondary">g proteínas</small></div></div>
+                                <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="fs-5 fw-semibold">@nutricion.Carbohidratos.ToString("0.#")</div><small class="text-body-secondary">g carbohidratos</small></div></div>
+                                <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="fs-5 fw-semibold">@nutricion.Grasas.ToString("0.#")</div><small class="text-body-secondary">g grasas</small></div></div>
+                            </div>
+                            <p class="small text-body-secondary mt-2 mb-0">
+                                Total de la receta, calculado con los valores por 100 g/ml de cada ingrediente y la cantidad necesaria.
+                                @if (nutricion.IngredientesSinDatos > 0)
+                                {
+                                    <span>No se han podido incluir @nutricion.IngredientesSinDatos ingrediente(s) sin datos nutricionales.</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-lg-5">
+                            <h2 class="h5">Alérgenos</h2>
+                            @if (nutricion.Alergenos.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var alergeno in nutricion.Alergenos)
+                                    {
+                                        <span class="badge text-bg-warning">@alergeno</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-body-secondary mb-0">Sin alérgenos declarados.</p>
+                            }
+                        </div>
+                    </div>
+                    <hr />
+                    <h2 class="h5">¿La puedo cocinar con mi nevera?</h2>
+                    @if (puedoCocinarla is true)
+                    {
+                        <div class="alert alert-success py-2">Sí: en tu nevera hay stock suficiente de todos los ingredientes.</div>
+                    }
+                    else if (puedoCocinarla is false)
+                    {
+                        <div class="alert alert-warning py-2">Todavía no: te faltan ingredientes o cantidad en tu nevera.</div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary py-2">No tienes una nevera asociada a tu usuario.</div>
+                    }
+                    @if (esAutor || RecetaWebSupport.IsAdmin(User))
+                    {
+                        <a asp-action="ComprobarIngredientes" class="btn btn-sm btn-outline-secondary">Ver qué ingrediente falta</a>
+                    }
+                }
                 <partial name="_PasosDetails" model="Model.Pasos" />
                 <partial name="_LineasDetails" model="Model.Lineas" />
 
             </div>
             <div class="card-footer bg-body p-4">
                 <div class="d-flex flex-column flex-sm-row gap-2">
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                @if (puedeGestionar)
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                    <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Eliminar</a>
+                }
                 <a asp-action="Index" class="btn btn-outline-secondary">Volver al listado</a>
             </div>
+            </div>
+            <div class="card-footer bg-body p-4">
+                <h2 class="h5">Compartir receta</h2>
+                @if (usuarioOptions.Any())
+                {
+                    <form method="post" asp-action="Compartir" class="row g-2 align-items-end">
+                        <input type="hidden" name="p_oid" value="@Model.Id" />
+                        <div class="col-sm-8 col-md-6">
+                            <label for="p_usuario_oid" class="form-label">Compartir con</label>
+                            <select id="p_usuario_oid" name="p_usuario_oid" class="form-select" required>
+                                <option value="">Selecciona un usuario…</option>
+                                @foreach (var option in usuarioOptions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-outline-primary">Compartir</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <p class="text-body-secondary mb-0">No hay otros usuarios con los que compartir esta receta.</p>
+                }
             </div>
         </div>
     </div>
