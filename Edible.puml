@@ -1,0 +1,226 @@
+@startuml Edible
+skinparam packageStyle rectangle
+title Edible Domain
+
+package "Edible" {
+  enum TipoIngrediente {
+    bebidas_alcoholicas
+    grasas_y_aceites_vegetales_y_animales
+    cafe_cacao_te_e_infusiones
+    platos_preparados
+    pescados_mariscos_anfibios_reptiles_e_invertebrados
+    frutas_y_productos_a_base_de_fruta
+    zumos_y_nectares_de_frutas_y_verduras
+    cereales_y_productos_a_base_de_cereales
+    legumbres_frutos_secos_semillas_oleaginosas_y_especias
+    carne_y_productos_carnicos
+    leche_y_productos_lacteos
+    productos_para_dietas_especiales_imitaciones_y_suplementos
+    sazonadores_salsas_y_condimentos
+    azucar_confiteria_y_postres_dulces_a_base_de_agua
+    hortalizas_verduras_y_sus_productos
+    agua_y_bebidas_a_base_de_agua
+  }
+
+  enum DietaEspecial {
+    vegetariana
+    sinGluten
+    ninguna
+    sinLactosa
+    vegana
+  }
+
+  enum Alergenos {
+    frutos_secos
+    lactosa
+    gluten
+    huevo
+    soja
+    pescado
+    marisco
+    apio
+    mostaza
+    sulfitos
+    sesamo
+    altramuces
+  }
+
+  enum EstadoCaducidad {
+    perfecto
+    cerca
+    caducado
+  }
+
+  class Usuario <<User>> {
+    -id: long <<oid>> <<isToken>>
+    -name: string
+    -password: string <<password>>
+    -publico: bool
+    -dieta: DietaEspecial
+    --
+    +new(p_name: string, p_password: string <<password>>, p_publico: bool, p_dieta: DietaEspecial, p_nevera: Nevera, p_listaCompra: ListaCompra): Usuario <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_name: string, p_password: string <<password>>, p_publico: bool, p_dieta: DietaEspecial, p_nevera: Nevera, p_listaCompra: ListaCompra): void <<Modifier>>
+    +login(p_oid: long <<oid>>, p_password: string <<password>>): string <<Login>>
+    +readOID(p_oid: long <<oid>>): Usuario <<ReadOID>>
+    +readAll(): Usuario[*] <<ReadAll>>
+    +ponerPublico(p_oid: long <<oid>>): void <<Custom>>
+    +ponerPrivado(p_oid: long <<oid>>): void <<Custom>>
+  }
+
+  class Chef {
+    +new(p_name: string, p_password: string <<password>>, p_publico: bool, p_dieta: DietaEspecial, p_nevera: Nevera, p_listaCompra: ListaCompra): Chef <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_name: string, p_password: string <<password>>, p_publico: bool, p_dieta: DietaEspecial): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): Chef <<ReadOID>>
+    +readAll(): Chef[*] <<ReadAll>>
+  }
+
+  class Nevera {
+    -id: long <<oid>>
+    --
+    +new(p_usuario_oid: long <<oid>>): Nevera <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): Nevera <<ReadOID>>
+    +readAll(): Nevera[*] <<ReadAll>>
+    +recorrerListaCompra(p_usuario_oid: long <<oid>>): Nevera <<CustomTransaction>>
+    +filtrarNevera(p_nevera_oid: long <<oid>>, p_tipo: TipoIngrediente, p_fechaLimiteCerca: Date, p_fechaActual: Date, p_estado: EstadoCaducidad): IngredienteNevera[*] <<ReadFilter>>
+  }
+
+  class ListaCompra {
+    -id: long <<oid>>
+    --
+    +new(p_usuario_oid: long <<oid>>): ListaCompra <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): ListaCompra <<ReadOID>>
+    +readAll(): ListaCompra[*] <<ReadAll>>
+  }
+
+  class Receta <<AggregateRoot>> {
+    -id: long <<oid>>
+    -nombre: string
+    -descripcion: string
+    -dietaEspecial: DietaEspecial
+    -valoracionMedia: float
+    -tiempoRealizacion: int
+    -dificultad: int
+    --
+    +new(p_nombre: string, p_descripcion: string, p_dietaEspecial: DietaEspecial, p_valoracionMedia: float, p_tiempoRealizacion: int, p_dificultad: int, p_chef_oid: long <<oid>>, p_lineas: LineaReceta[*]): Receta <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_nombre: string, p_descripcion: string, p_dietaEspecial: DietaEspecial, p_valoracionMedia: float, p_tiempoRealizacion: int, p_dificultad: int, p_chef_oid: long <<oid>>): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): Receta <<ReadOID>>
+    +readAll(): Receta[*] <<ReadAll>>
+    +compartir(p_oid: long <<oid>>): void <<Custom>>
+    +newLineaReceta(p_cantidadNecesaria: int, p_receta_oid: long <<oid>>, p_ingrediente_oid: long <<oid>>): LineaReceta <<New>>
+    +modifyLineaReceta(p_oid: long <<oid>>, p_cantidadNecesaria: int, p_receta_oid: long <<oid>>, p_ingrediente_oid: long <<oid>>): void <<Modifier>>
+    +destroyLineaReceta(p_oid: long <<oid>>): void <<Destroy>>
+    +readOIDLineaReceta(p_oid: long <<oid>>): LineaReceta <<ReadOID>>
+    +readAllLineaReceta(): LineaReceta[*] <<ReadAll>>
+    +comprobarIngredientesDisponibles(p_nombre: string, p_descripcion: string, p_dietaEspecial: DietaEspecial, p_valoracionMedia: float, p_chef_oid: long <<oid>>): Receta <<CustomTransaction>>
+    +busquedaAvanzada(p_dieta: DietaEspecial, p_notaMinima: float, p_tiempoMin: int, p_tiempoMax: int, p_dificultad: int, p_alergenoExcluido: Alergenos, p_ingrediente_oid: long <<oid>>): Receta[*] <<ReadFilter>>
+    +buscarNombre(p_nombre: string): Receta[*] <<ReadFilter>>
+    +recetasPorNeveraLinQ(p_nevera_oid: long <<oid>>): Receta[*] <<ReadFilter>>
+  }
+
+  class LineaReceta <<AggregateMember:Receta>> {
+    -id: long <<oid>>
+    -cantidadNecesaria: int
+  }
+
+  class Ingrediente {
+    -id: long <<oid>>
+    -nombre: string
+    -tipo: TipoIngrediente
+    -calorias: int?
+    -g_proteinas: float?
+    -g_carbohidratos: float?
+    -g_grasas: float?
+    -g_racion: float?
+    -alergenos: Alergenos[*]
+    -dietaEspecial: DietaEspecial[*]
+    --
+    +new(p_nombre: string, p_tipo: TipoIngrediente, p_calorias: int, p_g_proteinas: float, p_g_carbohidratos: float, p_g_grasas: float, p_g_racion: float, p_alergenos: Alergenos[*], p_dietaEspecial: DietaEspecial[*]): Ingrediente <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_nombre: string, p_tipo: TipoIngrediente, p_calorias: int, p_g_proteinas: float, p_g_carbohidratos: float, p_g_grasas: float, p_g_racion: float, p_alergenos: Alergenos[*], p_dietaEspecial: DietaEspecial[*]): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): Ingrediente <<ReadOID>>
+    +readAll(): Ingrediente[*] <<ReadAll>>
+  }
+
+  class IngredienteCompra {
+    -id: long <<oid>>
+    -cantidad: int
+    -comprado: bool
+    --
+    +new(p_cantidad: int, p_fechaCaducidad: Date, p_comprado: bool, p_nevera_oid: long <<oid>>, p_listaCompra_oid: long <<oid>>, p_ingredienteCatalogo_oid: long <<oid>>): IngredienteCompra <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_cantidad: int, p_fechaCaducidad: Date, p_comprado: bool, p_nevera_oid: long <<oid>>, p_listaCompra_oid: long <<oid>>, p_ingredienteCatalogo_oid: long <<oid>>): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): IngredienteCompra <<ReadOID>>
+    +readAll(): IngredienteCompra[*] <<ReadAll>>
+    +marcarComprado(p_oid: long <<oid>>): void <<Custom>>
+    +desmarcarComprado(p_oid: long <<oid>>): void <<Custom>>
+  }
+
+  class IngredienteNevera {
+    -id: long <<oid>>
+    -cantidad: int
+    -fechaCaducidad: Date
+    --
+    +new(p_cantidad: int, p_fechaCaducidad: Date, p_ingredienteCatalogo_oid: long <<oid>>, p_nevera_oid: long <<oid>>, p_receta_oid: long <<oid>>): IngredienteNevera <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_cantidad: int, p_fechaCaducidad: Date): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): IngredienteNevera <<ReadOID>>
+    +readAll(): IngredienteNevera[*] <<ReadAll>>
+    +comprobarCaducidad(p_oid: long <<oid>>): void <<Custom>>
+  }
+
+  class Comentario {
+    -id: long <<oid>>
+    -user_id: int
+    -imagen: string?
+    -titulo: string
+    -comentario: string?
+    -valoracion: int
+    --
+    +new(p_user_id: int, p_titulo: string, p_valoracion: int, p_comentador_oid: long <<oid>>, p_receta_oid: long <<oid>>): Comentario <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_user_id: int, p_titulo: string, p_valoracion: int): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): Comentario <<ReadOID>>
+    +readAll(): Comentario[*] <<ReadAll>>
+    +recalcularValoracionMedia(p_user_id: int, p_titulo: string, p_valoracion: int, p_comentador_oid: long <<oid>>, p_roleB_oid: long <<oid>>): Comentario <<CustomTransaction>>
+  }
+
+  class Paso {
+    -id: long <<oid>>
+    -nombre: string
+    -descripcion: string
+    --
+    +new(p_nombre: string, p_descripcion: string, p_receta_oid: long <<oid>>): Paso <<New>>
+    +destroy(p_oid: long <<oid>>): void <<Destroy>>
+    +modify(p_oid: long <<oid>>, p_nombre: string, p_descripcion: string): void <<Modifier>>
+    +readOID(p_oid: long <<oid>>): Paso <<ReadOID>>
+    +readAll(): Paso[*] <<ReadAll>>
+  }
+
+  ' Inheritance
+  Usuario <|-- Chef
+
+  ' Relationships
+  Chef "chef\n1" -- "receta\n0..*" Receta
+  Receta "receta\n1" *-- "pasos\n0..*" Paso
+  Usuario "comentador\n1" -- "comentario\n0..*" Comentario
+  Receta "receta\n1" *-- "lineas\n1..*" LineaReceta
+  Ingrediente "ingredienteCatalogo\n1" -- "lineasDeReceta\n0..*" LineaReceta
+  Usuario "usuario\n1" *-- "nevera\n1" Nevera
+  Receta "receta\n1" -- "comentarios\n0..*" Comentario
+  Usuario "usuario\n1" *-- "listaCompra\n1" ListaCompra
+  Nevera "nevera\n1" *-- "ingredienteEnLaLista\n0..*" IngredienteCompra
+  ListaCompra "listaCompra\n1" *-- "ingredienteEnLaLista\n0..*" IngredienteCompra
+  Ingrediente "ingredienteCatalogo\n1" -- "ingredienteEnCompra\n0..*" IngredienteCompra
+  Ingrediente "ingredienteCatalogo\n1" -- "ingredienteEnNevera\n0..*" IngredienteNevera
+  Nevera "nevera\n1" *-- "ingredienteEnLaNevera\n0..*" IngredienteNevera
+  Receta "receta\n1" -- "ingredientesDisponibles\n0..*" IngredienteNevera
+  Usuario "usuariosSugeridos\n0..*" -- "recetasSugeridas\n0..*" Receta
+}
+@enduml
